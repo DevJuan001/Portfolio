@@ -9,6 +9,7 @@ export default function Projects() {
       <div className="mt-10 grid grid-cols-1 lg:grid-cols-2">
         {projects.map((project) => (
           <ProjectItem
+            key={project.title}
             image={project.image}
             alt={project.alt}
             title={project.title}
