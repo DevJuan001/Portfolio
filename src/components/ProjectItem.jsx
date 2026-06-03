@@ -32,8 +32,8 @@ export default function ProjectItem({
             >
               <icons.githubLight
                 className="w-5 h-5 transition-all duration-200 
-                  dark:invert dark:group-hover:invert-0
-                  group-hover:invert"
+                dark:invert dark:group-hover:invert-0
+                group-hover:invert"
               />
 
               <span>Github</span>
