@@ -12,13 +12,15 @@
   --font-poppins: "Poppins", sans-serif;
 }
 
-
-html, body {
+html {
   overflow-x: clip;
-  min-height: 100%;
-  background-color: white;
 }
 
-html.dark, body {
-  background-color: black;
+body {
+  min-height: 100vh;
+  background-color: #fbf9fc;
+}
+
+html.dark body {
+  background-color: #0f0f10;
 }
