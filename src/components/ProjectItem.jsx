@@ -37,7 +37,7 @@ export default function ProjectItem({
         );
       }}
       className="flex flex-col gap-3 rounded-3xl p-4 transition-colors duration-200
-      hover:bg-gray-200 hover:cursor-pointer
+      hover:bg-[#e5e7eb70] hover:cursor-pointer
       dark:bg-[#0f0f11] dark:hover:bg-[#28282b]"
     >
       <div
