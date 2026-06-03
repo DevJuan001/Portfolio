@@ -10,6 +10,26 @@
   --font-sans: "Inter", sans-serif;
   --font-dmsans: "DM Sans", sans-serif;
   --font-poppins: "Poppins", sans-serif;
+
+  --animate-carrousel-sections-in: carrousel-sections-in 1s ease-in-out;
+
+  @keyframes carrousel-sections-in {
+    0% {
+      transform: translateY(30px);
+      width: 50px;
+    }
+    50% {
+      transform: translateY(-20px);
+      width: 80px;
+    }
+    75% {
+      width: 85px;
+    }
+    100% {
+      transform: translateY(0px);
+      width: 88px;
+    }
+  }
 }
 
 html {
@@ -24,4 +44,9 @@ body {
 
 html.dark body {
   background-color: #0f0f10;
+}
+
+/* Clase para ocultar la barra de navegación */
+::-webkit-scrollbar {
+  display: none;
 }
