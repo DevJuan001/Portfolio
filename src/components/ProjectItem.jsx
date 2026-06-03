@@ -25,7 +25,7 @@ export default function ProjectItem({
         <div className="flex flex-wrap gap-2">
           {stack.map((technology) => (
             <div
-              className={`flex items-center gap-1 py-1.5 px-3 rounded-full 
+              className={`flex items-center gap-1 py-1 px-2.5 rounded-full 
                 ${technology.styles}
               `}
             >
