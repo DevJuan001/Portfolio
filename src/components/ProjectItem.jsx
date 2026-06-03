@@ -8,6 +8,7 @@ export default function ProjectItem({
   description,
   github,
   link,
+  stack,
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-3xl">
@@ -20,6 +21,19 @@ export default function ProjectItem({
 
       <div className="flex flex-col gap-2">
         <h3 className="text-xl font-semibold dark:text-gray-100">{title}</h3>
+
+        <div className="flex flex-wrap gap-2">
+          {stack.map((technology) => (
+            <div
+              className={`flex items-center gap-1 py-1 px-3 rounded-full 
+                ${technology.styles}
+              `}
+            >
+              <technology.icon className="w-4 h-4" />
+              <span className="text-xs">{technology.name}</span>
+            </div>
+          ))}
+        </div>
 
         <p className="text-[#75777E] dark:text-[#7e8088]">{description}</p>
 
