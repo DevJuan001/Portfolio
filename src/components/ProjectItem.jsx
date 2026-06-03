@@ -30,9 +30,7 @@ export default function ProjectItem({
                 hover:bg-black hover:cursor-pointer hover:text-white
                 dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
             >
-              <img
-                src={icons.githubLight}
-                alt="Icono de github"
+              <icons.githubLight
                 className="w-5 h-5 transition-all duration-200 
                   dark:invert dark:group-hover:invert-0
                   group-hover:invert"
