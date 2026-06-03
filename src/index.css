@@ -8,5 +8,17 @@
 
 @theme {
   --font-sans: "Inter", sans-serif;
+  --font-dmsans: "DM Sans", sans-serif;
   --font-poppins: "Poppins", sans-serif;
+}
+
+
+html, body {
+  overflow-x: clip;
+  min-height: 100%;
+  background-color: white;
+}
+
+html.dark, body {
+  background-color: black;
 }
