@@ -1,9 +1,9 @@
-import linkedin from "./icons/linkedin.svg";
-import githubDark from "./icons/GitHub_dark.svg";
-import githubLight from "./icons/GitHub_light.svg";
+import Linkedin from "./icons/linkedin.svg?react";
+import GithubDark from "./icons/GitHub_dark.svg?react";
+import GithubLight from "./icons/GitHub_light.svg?react";
 
 export const icons = {
-  linkedin,
-  githubDark,
-  githubLight,
+  linkedin: Linkedin,
+  githubDark: GithubDark,
+  githubLight: GithubLight,
 };
