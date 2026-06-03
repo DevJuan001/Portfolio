@@ -68,6 +68,7 @@ export default function Modal({
         style={{
           visibility: "hidden",
           maxHeight: "calc(100vh - 20px)",
+          overflowY: "auto",
         }}
         ref={modalRef}
         className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] rounded-[32px] shadow-lg
