@@ -28,7 +28,7 @@ export default function Hero() {
         </p>
       </div>
 
-      <div className="flex gap-2 mt-10">
+      <div className="flex gap-2 mt-8">
         {socials.map((social) => (
           <SocialPill
             key={social.title}
