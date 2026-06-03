@@ -48,5 +48,5 @@ html.dark body {
 
 /* Clase para ocultar la barra de navegación */
 ::-webkit-scrollbar {
-  display: none;
+  opacity: 0;
 }
