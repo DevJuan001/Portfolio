@@ -40,7 +40,10 @@ export default function Header() {
         ))}
 
         <button
-          onClick={(e) => openModal(null, "theme", e.currentTarget)}
+          onClick={(e) => {
+            e.preventDefault();
+            openModal(null, "theme", e.currentTarget);
+          }}
           className="ml-3 flex items-center p-2.5 rounded-3xl
           hover:bg-gray-200 hover:cursor-pointer
           dark:hover:bg-[#28282b] dark:border-[#1e1e209f]"
