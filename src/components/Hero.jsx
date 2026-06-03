@@ -18,7 +18,15 @@ export default function Hero() {
         </h1>
       </div>
 
-      <div className="text-xl font-semibold mt-5 dark:text-[#75777E]">Desarrollador full stack</div>
+      <div className="w-3xl mt-4 text-[#75777E]">
+        <p className="text-xl font-medium">
+          Desarrollador Full Stack y Tecnólogo en Análisis y Desarrollo de
+          Software de Bogotá, Colombia. Me especializo en construir aplicaciones
+          web modernas, arquitecturas backend robustas. Apasionado por escribir
+          código limpio y crear experiencias de usuario que marquen la
+          diferencia.
+        </p>
+      </div>
 
       <div className="flex gap-2 mt-10">
         {socials.map((social) => (
