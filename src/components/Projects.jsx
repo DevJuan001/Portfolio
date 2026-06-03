@@ -16,7 +16,7 @@ export default function Projects() {
         {extendedProjects.map((project) => (
           <ProjectItem
             key={project.title}
-            image={project.image}
+            images={project.images}
             alt={project.alt}
             title={project.title}
             shortDescription={project.short_description}
