@@ -19,7 +19,7 @@ export default function ProjectModal({ project }) {
             <img
               src={image}
               alt={project.alt}
-              className={`ml-28 w-full h-[440px] border-[5px] rounded-2xl aspect-auto
+              className={`ml-28 w-full h-96 border-[5px] rounded-2xl aspect-auto
             dark:border-gray-200`}
             />
           </div>
@@ -43,16 +43,18 @@ export default function ProjectModal({ project }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 max-w-3xl">
-        <h2 className="text-4xl font-semibold">{project.title}</h2>
+      <div className="flex flex-col gap-2 px-4">
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <h2 className="text-4xl font-semibold">{project.title}</h2>
 
-        <p className="text-lg text-[#75777E] dark:text-[#7e8088]">
-          {project.description}
-        </p>
-      </div>
+          <p className="text-lg text-[#75777E] dark:text-[#7e8088]">
+            {project.description}
+          </p>
+        </div>
 
-      <div className="flex flex-col">
-        <h3 className="font-semibold text-2xl">Stack</h3>
+        <div className="flex flex-col">
+          <h3 className="font-semibold text-2xl">Stack</h3>
+        </div>
       </div>
     </div>
   );
