@@ -30,7 +30,7 @@ export default function ProjectItem({
               `}
             >
               <technology.icon className="w-4 h-4" />
-              <span className="text-xs">{technology.name}</span>
+              <span className="text-xs font-medium">{technology.name}</span>
             </div>
           ))}
         </div>
