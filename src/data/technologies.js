@@ -26,7 +26,7 @@ export const technologies = {
   },
 
   Tailwind: {
-    name: "Tailwind",
+    name: "Tailwind CSS",
     styles: "bg-blue-950 text-white",
     icon: icons.tailwind,
   },
