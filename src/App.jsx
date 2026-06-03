@@ -6,7 +6,7 @@ function App() {
   useTheme();
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full">
       <Header />
       <SectionsContainer />
       <div id="modal-root"></div>
