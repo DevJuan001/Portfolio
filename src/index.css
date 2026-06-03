@@ -12,6 +12,8 @@
   --font-poppins: "Poppins", sans-serif;
 
   --animate-carrousel-sections-in: carrousel-sections-in 1s ease-in-out;
+  --animate-slide-in-right: slide-in-right 1s ease-out both;
+  --animate-slide-in-left: slide-in-left 1s ease-out both;
 
   @keyframes carrousel-sections-in {
     0% {
@@ -28,6 +30,28 @@
     100% {
       transform: translateY(0px);
       width: 88px;
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(60px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-60px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
     }
   }
 }
