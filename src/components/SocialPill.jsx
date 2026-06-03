@@ -8,7 +8,7 @@ export default function SocialPill({ href, icon, iconDarkStyles, title }) {
       dark:text-[#d1d5db] dark:hover:text-white dark:hover:bg-[#28282b] dark:border-[#3a3d43]"
     >
       <img src={icon} className={`w-4 h-4 ${iconDarkStyles}`} />
-      
+
       <span>{title}</span>
     </a>
   );
