@@ -5,7 +5,7 @@ import Modal from "./Modal";
 import ProjectModal from "./ProjectModal";
 
 export default function ProjectItem({
-  image,
+  images,
   alt,
   title,
   shortDescription,
@@ -23,7 +23,7 @@ export default function ProjectItem({
         e.preventDefault;
         openModal(
           {
-            image,
+            images,
             alt,
             title,
             shortDescription,
@@ -45,7 +45,7 @@ export default function ProjectItem({
         dark:bg-[#28282b]"
       >
         <img
-          src={image}
+          src={images[0]}
           alt={alt}
           className="ml-28 w-full border-[5px] rounded-2xl
          dark:border-gray-200"
