@@ -21,7 +21,7 @@ export default function ProjectItem({
       <div className="flex flex-col gap-2">
         <h3 className="text-xl font-semibold dark:text-gray-100">{title}</h3>
 
-        <p className="dark:text-[#7e8088]">{description}</p>
+        <p className="text-[#75777E] dark:text-[#7e8088]">{description}</p>
 
         <div className="flex gap-4 mt-2">
           {github && (
