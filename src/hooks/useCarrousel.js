@@ -3,13 +3,12 @@ import { useState } from "react";
 
 export function useCarrousel(images) {
   const [current, setCurrent] = useState(0);
-  const [slideAnim, setSlideAnim] = useState("animate-slide-in-right");
+
+  const nextIndex = (current + 1) % images.length;
+  const prevIndex = (current - 1 + images.length) % images.length;
 
   const goTo = (index) => {
     if (index === current) return;
-    setSlideAnim(
-      index > current ? "animate-slide-in-right" : "animate-slide-in-left",
-    );
     setCurrent(index);
   };
 
@@ -23,5 +22,5 @@ export function useCarrousel(images) {
     return () => clearInterval(timer);
   }, [current]);
 
-  return { current, slideAnim, goTo };
+  return { current, nextIndex, prevIndex, goTo };
 }
