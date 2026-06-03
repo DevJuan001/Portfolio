@@ -67,6 +67,7 @@ export default function Modal({
         onClick={(e) => e.stopPropagation()}
         style={{
           visibility: "hidden",
+          maxHeight: "calc(100vh - 20px)",
         }}
         ref={modalRef}
         className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] rounded-[32px] shadow-lg
@@ -84,8 +85,9 @@ export default function Modal({
 
               <button
                 onClick={closeModal}
-                className="w-10 h-10 p-2.5 self-end flex items-center justify-center
-              hover:bg-[#49454f21] dark:hover:bg-[#28282bbd] rounded-full"
+                className="w-10 h-10 p-2.5 self-end flex items-center justify-center rounded-full
+                hover:bg-[#49454f21] hover:cursor-pointer
+                dark:hover:bg-[#28282bbd]"
               >
                 <Icon name={"close"} size={24} className="dark:invert" />
               </button>
