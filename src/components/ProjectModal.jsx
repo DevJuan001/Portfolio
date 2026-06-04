@@ -13,14 +13,14 @@ export default function ProjectModal({ project }) {
         {images.map((image, i) => (
           <div
             className={` bg-gray-200 p-3 rounded-2xl overflow-hidden
-            dark:bg-[#28282b] transition-all duration-500          
+            dark:bg-[#28282b] transition-all duration-500        
             ${i === current ? "w-[90%]" : "w-[10%]"}`}
           >
             <img
               src={image}
               alt={project.alt}
-              className={`ml-28 w-full h-96 border-[5px] rounded-2xl aspect-auto
-            dark:border-gray-200`}
+              className={`ml-28 w-full h-96 border-[5px] border-gray-400 rounded-2xl aspect-auto
+              dark:border-[#000000]`}
             />
           </div>
         ))}
