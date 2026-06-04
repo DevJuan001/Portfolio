@@ -2,7 +2,7 @@ import Gsap from "./icons/gsap.svg?react";
 import MySql from "./icons/mysql.svg?react";
 import Redis from "./icons/redis.svg?react";
 import Python from "./icons/python.svg?react";
-import Fastapi from "./icons/fastApi.svg?react";
+import Fastapi from "./icons/fastapi.svg?react";
 import ReactIcon from "./icons/react.svg?react";
 import Tanstack from "./icons/tanstack.svg?react";
 import Linkedin from "./icons/linkedin.svg?react";
