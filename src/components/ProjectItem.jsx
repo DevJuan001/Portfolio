@@ -20,7 +20,7 @@ export default function ProjectItem({
   return (
     <div
       onClick={(e) => {
-        e.preventDefault;
+        e.preventDefault();
         openModal(
           {
             images,
