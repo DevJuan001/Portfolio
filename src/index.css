@@ -10,10 +10,55 @@
   --font-sans: "Inter", sans-serif;
   --font-dmsans: "DM Sans", sans-serif;
   --font-poppins: "Poppins", sans-serif;
+
+  --animate-carrousel-sections-in: carrousel-sections-in 1s ease-in-out;
+  --animate-slide-in-right: slide-in-right 1s ease-out both;
+  --animate-slide-in-left: slide-in-left 1s ease-out both;
+
+  @keyframes carrousel-sections-in {
+    0% {
+      transform: translateY(30px);
+      width: 50px;
+    }
+    50% {
+      transform: translateY(-20px);
+      width: 80px;
+    }
+    75% {
+      width: 85px;
+    }
+    100% {
+      transform: translateY(0px);
+      width: 88px;
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(60px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-60px);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
 }
 
 html {
   overflow-x: clip;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -23,4 +68,9 @@ body {
 
 html.dark body {
   background-color: #0f0f10;
+}
+
+/* Clase para ocultar la barra de navegación */
+::-webkit-scrollbar {
+  opacity: 0;
 }
