@@ -101,7 +101,6 @@ export const useFlipModal = ({
       // Ocultamos el trigger mientras el modal está visible para que no se vea doble.
       // Usamos !important para ganar sobre cualquier estilo CSS que pueda traer.
       element.style.setProperty("opacity", "0", "important");
-      element.style.setProperty("visibility", "hidden", "important");
 
       // Cálculo de posición final del modal
       const vw = window.innerWidth;
@@ -239,7 +238,7 @@ export const useFlipModal = ({
             modal.style.removeProperty("min-width");
 
             gsap.set(modal, {
-              overflow: "visible",
+              overflowY: "auto",
               willChange: "auto",
               height: "auto",
               clearProps: "backgroundColor,color,padding",
@@ -247,7 +246,6 @@ export const useFlipModal = ({
 
             // Mantenemos el trigger oculto mientras el modal siga abierto
             element.style.setProperty("opacity", "0", "important");
-            element.style.setProperty("visibility", "hidden", "important");
           },
         }),
       );
@@ -269,11 +267,9 @@ export const useFlipModal = ({
       cancelAnimationFrame(raf);
       if (element) {
         element.style.removeProperty("opacity");
-        element.style.removeProperty("visibility");
         gsap.set(element, {
           opacity: 1,
-          visibility: "visible",
-          clearProps: "opacity,visibility",
+          clearProps: "opacity",
         });
       }
     };
@@ -317,11 +313,10 @@ export const useFlipModal = ({
 
       // Restauramos el trigger temporalmente a visible para poder leer su estilos
       element.style.removeProperty("opacity");
-      element.style.removeProperty("visibility");
-      gsap.set(element, { opacity: 1, visibility: "visible" });
+      gsap.set(element, { opacity: 1 });
 
       // Ocultamos el trigger durante la animación
-      gsap.set(element, { opacity: 0, visibility: "hidden" });
+      gsap.set(element, { opacity: 0 });
 
       // Ocultamos overflow para que el contenido del modal no se desborde
       gsap.set(modal, { overflow: "hidden" });
@@ -403,8 +398,7 @@ export const useFlipModal = ({
         gsap.set(modal, { willChange: "auto" });
         gsap.set(element, {
           opacity: 1,
-          visibility: "visible",
-          clearProps: "opacity,visibility",
+          clearProps: "opacity",
         });
         onClose();
       }
@@ -459,7 +453,7 @@ export const useFlipModal = ({
       );
 
       // Revelamos el trigger debajo del modal justo antes de que termine
-      tl.set(element, { opacity: 1, visibility: "visible" }, 0.2);
+      tl.set(element, { opacity: 1 }, 0.2);
 
       // El modal hace fade out revelando el contenido del botón de forma natural
       tl.to(modal, { opacity: 0, duration: 0.05, ease: "power1.inOut" }, 0.2);
