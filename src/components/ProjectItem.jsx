@@ -47,7 +47,7 @@ export default function ProjectItem({
         <img
           src={images[0]}
           alt={alt}
-          className="ml-28 w-full border-[5px] rounded-2xl
+          className="ml-28 w-full border-[5px] border-gray-400 rounded-2xl
          dark:border-gray-200"
         />
       </div>
