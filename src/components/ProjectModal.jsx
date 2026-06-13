@@ -9,18 +9,25 @@ export default function ProjectModal({ project }) {
       className="flex flex-col gap-4
       dark:text-white overflow-y-auto"
     >
-      <div className="relative flex gap-3 shadow-[0px_0px_0px_0px_#000] overflow-hidden">
+      <div
+        className="relative max-h-72 flex gap-3 shadow-[0px_0px_0px_0px_#000] overflow-hidden
+        md:max-h-[420px]"
+      >
         {images.map((image, i) => (
           <div
-            className={` bg-gray-200 p-3 rounded-2xl overflow-hidden
-            dark:bg-[#28282b] transition-all duration-500        
+            key={i}
+            className={`h-44 bg-gray-200 px-3 pt-4 rounded-2xl overflow-hidden
+            md:h-[390px]
+            dark:bg-[#202022] transition-all duration-500        
             ${i === current ? "w-[90%]" : "w-[10%]"}`}
           >
             <img
               src={image}
               alt={project.alt}
-              className={`ml-28 w-full h-96 border-[5px] border-gray-400 rounded-2xl aspect-auto
-              dark:border-[#000000]`}
+              className={`ml-1 w-full h-full border-l-4 border-t-4 border-gray-300 rounded-ss-2xl transition-opacity duration-500
+              md:ml-10
+              dark:border-[#000000]
+              ${i === current ? "opacity-100" : "opacity-2 dark:opacity-2"}`}
             />
           </div>
         ))}
@@ -32,6 +39,7 @@ export default function ProjectModal({ project }) {
           >
             {images.map((_, index) => (
               <button
+                key={index}
                 onClick={() => goTo(index)}
                 className={`h-2 rounded-3xl transition-all duration-500 shadow-[0px_0px_6px_0.01px_#28282b8c]
                 ${index === current ? "w-8 bg-white dark:bg-[#28282b]" : "w-2 bg-[#ffffff5c] dark:bg-[#28282b8c]"}

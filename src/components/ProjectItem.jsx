@@ -38,17 +38,19 @@ export default function ProjectItem({
       }}
       className="flex flex-col gap-3 rounded-3xl p-4 transition-colors duration-200
       hover:bg-[#e5e7eb70] hover:cursor-pointer
-      dark:bg-[#0f0f11] dark:hover:bg-[#28282b]"
+      dark:bg-[#101012] dark:hover:bg-[#202022]"
     >
       <div
-        className="h-72 bg-gray-200 p-3 rounded-2xl overflow-hidden
+        className="h-44 bg-gray-200 p-3 rounded-2xl overflow-hidden
+        md:h-[275px]
         dark:bg-[#28282b]"
       >
         <img
           src={images[0]}
           alt={alt}
-          className="ml-28 w-full border-[5px] border-gray-400 rounded-2xl
-         dark:border-gray-200"
+          className="ml-3 h-[165px] border-l-4 border-t-4 border-gray-300 rounded-ss-2xl
+          md:ml-5 md:w-full md:h-[275px]
+          dark:border-[#101012]"
         />
       </div>
 
@@ -64,6 +66,7 @@ export default function ProjectItem({
               `}
             >
               <technology.icon className="w-3.5 h-3.5" />
+
               <span className="text-xs font-medium">{technology.name}</span>
             </div>
           ))}
