@@ -72,13 +72,13 @@ export default function Modal({
         }}
         ref={modalRef}
         className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] rounded-[32px] shadow-lg
-        dark:border dark:bg-black dark:border-[#1e1e209f]`}
+        dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
       >
         <div ref={contentRef}>
           {type !== "theme" && (
             <header className="flex justify-between items-center mb-2">
               <span
-                data-flip-id="modal-title"
+                data-shared-id="modal-title"
                 className="min-w-56 font-medium text-lg dark:text-[#e4e2e5]"
               >
                 {title}
