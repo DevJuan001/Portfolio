@@ -22,6 +22,7 @@ export default function ProjectModal({ project }) {
             ${i === current ? "w-[90%]" : "w-[10%]"}`}
           >
             <img
+              data-shared-id="project-main-image"
               src={image}
               alt={project.alt}
               className={`w-full h-full rounded-ss-2xl transition-opacity duration-500 aspect-video
