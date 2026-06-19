@@ -14,17 +14,7 @@ export default function Projects() {
 
       <div className="mt-10 grid grid-cols-1 lg:grid-cols-2 gap-5">
         {extendedProjects.map((project) => (
-          <ProjectItem
-            key={project.title}
-            images={project.images}
-            alt={project.alt}
-            title={project.title}
-            shortDescription={project.short_description}
-            description={project.description}
-            link={project.link}
-            github={project.github}
-            stack={project.stack}
-          />
+          <ProjectItem key={project.title} project={project} />
         ))}
       </div>
     </section>
