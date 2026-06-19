@@ -26,7 +26,11 @@ export default function ProjectItem({ project }) {
         className="relative h-44 rounded-2xl shadow-md overflow-hidden
         md:h-[275px]"
       >
-        <img src={project.images[0]} alt={project.alt} />
+        <img
+          data-shared-id="project-main-image"
+          src={project.images[0]}
+          alt={project.alt}
+        />
 
         <button
           onClick={(e) => {
@@ -108,7 +112,10 @@ export default function ProjectItem({ project }) {
           onClose={closeModal}
         >
           {modalType === "Tracklinker" && <ProjectModal project={modalData} />}
-          {modalType === "Parking SAAS — Sistema de gestión de parqueaderos" && <ProjectModal project={modalData} />}
+          {modalType ===
+            "Parking SAAS — Sistema de gestión de parqueaderos" && (
+            <ProjectModal project={modalData} />
+          )}
         </Modal>
       )}
     </div>
