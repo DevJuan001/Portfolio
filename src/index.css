@@ -70,6 +70,10 @@ html.dark body {
   background-color: #0f0f10;
 }
 
+button {
+  cursor: pointer;
+}
+
 /* Clase para ocultar la barra de navegación */
 ::-webkit-scrollbar {
   opacity: 0;
