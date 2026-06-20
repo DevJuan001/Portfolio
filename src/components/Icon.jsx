@@ -7,9 +7,11 @@ export default function Icon({
   size = 24,
   color,
   className,
+  ...rest
 }) {
   return (
     <span
+      {...rest}
       className={`material-symbols-rounded ${className ?? ""}`}
       style={{
         fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' var(--icon-weight, ${weight}), 'GRAD' 0, 'opsz' ${size}`,
