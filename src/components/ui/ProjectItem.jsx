@@ -38,8 +38,8 @@ export default function ProjectItem({ project }) {
             e.stopPropagation();
             openModal(project, project.title, e.currentTarget);
           }}
-          className="absolute top-2 right-2 flex items-center p-2 backdrop-blur-xs shadow-[0px_0px_5px_1px_#6a7282] rounded-3xl
-          hover:backdrop-blur-sm"
+          className="absolute top-2 right-2 flex items-center p-2 backdrop-blur-md shadow-[0px_0px_5px_1px_#6a7282] rounded-3xl
+          md:backdrop-blur-xs  md:hover:backdrop-blur-sm"
         >
           <Icon name={"expand_content"} color={"#fff"} />
         </button>
