@@ -16,7 +16,7 @@ export default function ProjectModal({ project }) {
         {images.map((image, i) => (
           <div
             key={i}
-            className={`h-44 bg-gray-200 rounded-2xl overflow-hidden
+            className={`h-44 bg-gray-200 rounded-2xl
             md:h-[390px]
             dark:bg-[#202022] transition-all duration-500        
             ${i === current ? "w-[90%]" : "w-[10%]"}`}
@@ -25,7 +25,7 @@ export default function ProjectModal({ project }) {
               data-shared-id="project-main-image"
               src={image}
               alt={project.alt}
-              className={`w-full h-full rounded-ss-2xl transition-opacity duration-500 aspect-video
+              className={`w-full h-full rounded-2xl transition-opacity duration-500 aspect-video
               dark:border-[#000000]
               ${i === current ? "opacity-100" : "opacity-2 dark:opacity-2"}`}
             />
