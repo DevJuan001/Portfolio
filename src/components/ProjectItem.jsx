@@ -24,12 +24,13 @@ export default function ProjectItem({ project }) {
     >
       <div
         className="relative h-44 rounded-2xl shadow-md overflow-hidden
-        md:h-[275px]"
+        md:h-80"
       >
         <img
           data-shared-id="project-main-image"
           src={project.images[0]}
           alt={project.alt}
+          className="h-full rounded-2xl"
         />
 
         <button
