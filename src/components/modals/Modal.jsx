@@ -11,6 +11,7 @@ export default function Modal({
   z_index = "50",
   location = "anchored",
   growDirection = "bottom-right",
+  margin = 20,
   title,
   children,
   onClose,
@@ -40,6 +41,7 @@ export default function Modal({
     onClose,
     location,
     growDirection,
+    margin,
     id: modalId,
   });
 
@@ -71,7 +73,7 @@ export default function Modal({
           overflowY: "auto",
         }}
         ref={modalRef}
-        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] rounded-[32px] shadow-lg
+        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] shadow-lg
         dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
       >
         <div ref={contentRef}>
