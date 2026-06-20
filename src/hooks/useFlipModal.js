@@ -131,6 +131,13 @@ function createPhantom(element, rect) {
     willChange: "transform, width, height, top, left, border-radius, opacity",
   });
 
+  // Forzamos visibilidad con !important. El clon hereda los estilos inline
+  // del elemento fuente (ej: visibility:hidden/opacity:0 que fijamos sobre
+  // el target durante la apertura si el usuario cierra antes de que termine).
+  // Sin esto, el phantom nacería invisible y no se vería el slide de cierre.
+  phantom.style.setProperty("visibility", "visible", "important");
+  phantom.style.setProperty("opacity", "1", "important");
+
   document.body.appendChild(phantom);
   return phantom;
 }
@@ -230,6 +237,9 @@ export const useFlipModal = ({
     // Flag para cancelar la animación si el componente se desmonta antes de que
     // el requestAnimationFrame se ejecute (evita memory leaks y errores de GSAP).
     let cancelled = false;
+    // Guardamos los pares shared aquí para poder restaurar la visibilidad de
+    // los targets en el cleanup si la animación se cancela a mitad de camino.
+    let activePairs = [];
 
     // Diferimos toda la lógica un frame para que React haya pintado el modal en el DOM
     // antes de que GSAP intente medirlo y animarlo.
@@ -415,6 +425,7 @@ export const useFlipModal = ({
       // desde la posición del elemento en el trigger hasta su posición en la modal.
       const sharedPairs = findSharedPairs(element, modal, modal);
       const phantoms = [];
+      activePairs = sharedPairs;
 
       for (const pair of sharedPairs) {
         const sourceRect = pair.source.getBoundingClientRect();
@@ -433,11 +444,13 @@ export const useFlipModal = ({
         phantoms.push({ phantom, pair });
 
         // El target (elemento real dentro de la modal) se mantiene OCULTO
-        // (opacity 0) durante TODO el viaje del phantom. Solo se revelará
-        // cuando el deslizamiento termine (onComplete del FLIP más abajo),
-        // momento en el que el phantom ya está alineado sobre el target y
-        // el swap es invisible. Así nunca se ve el elemento duplicado.
-        gsap.set(pair.target, { opacity: 0 });
+        // durante TODO el viaje del phantom. Usamos visibility:hidden + opacity:0
+        // con !important inline para que el Flip.from(nested:true) no pueda
+        // sobrescribirlo (nested anima los hijos del modal y podía restaurar la
+        // visibilidad del target a mitad de animación). Solo se revela cuando
+        // el deslizamiento termina (onComplete del FLIP más abajo).
+        pair.target.style.setProperty("visibility", "hidden", "important");
+        pair.target.style.setProperty("opacity", "0", "important");
 
         // Animamos el phantom desde la posición/forma/tamaño del source hasta
         // los del target. El borderRadius y el fontSize se interpolan para
@@ -544,6 +557,10 @@ export const useFlipModal = ({
               pair.target.style.transition = "none";
 
               // Revelamos el target real, debajo del snap-clone idéntico.
+              // Quitamos los !important de visibility/opacity que fijamos al
+              // inicio para que el target vuelva a ser visible.
+              pair.target.style.removeProperty("visibility");
+              pair.target.style.removeProperty("opacity");
               gsap.set(pair.target, { opacity: 1, clearProps: "opacity" });
 
               // Retiramos el snap-clone: al ser idéntico al target, es invisible.
@@ -583,6 +600,14 @@ export const useFlipModal = ({
           opacity: 1,
           clearProps: "opacity",
         });
+      }
+      // Restauramos la visibilidad de los targets por si la animación se
+      // canceló antes de que el phantom llegara.
+      for (const pair of activePairs) {
+        if (pair.target) {
+          pair.target.style.removeProperty("visibility");
+          pair.target.style.removeProperty("opacity");
+        }
       }
     };
   }, [
@@ -669,6 +694,13 @@ export const useFlipModal = ({
       const closePhantoms = [];
 
       for (const pair of sharedPairs) {
+        // Si el usuario cerró antes de que terminara la apertura, el target
+        // pudo quedar con visibility:hidden !important inline. Lo removemos
+        // para que el phantom (clon) no herede esa invisibilidad y además
+        // para que el target vuelva a un estado limpio.
+        pair.target.style.removeProperty("visibility");
+        pair.target.style.removeProperty("opacity");
+
         const targetRect = pair.target.getBoundingClientRect();
 
         // Creamos el phantom posicionado sobre el elemento en la modal, con la
