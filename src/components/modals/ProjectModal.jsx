@@ -1,4 +1,9 @@
+// Hooks
 import { useCarrousel } from "../../hooks/useCarrousel";
+// Icons
+import { icons } from "../../assets/icons";
+// Componentes
+import Icon from "../ui/Icon";
 
 export default function ProjectModal({ project }) {
   const images = project.images ?? [project.image];
@@ -7,7 +12,7 @@ export default function ProjectModal({ project }) {
   return (
     <div
       className="flex flex-col gap-4
-    dark:text-white overflow-y-auto"
+      dark:text-white overflow-y-auto"
     >
       <div
         className="relative max-h-72 flex gap-3 shadow-[0px_0px_0px_0px_#000] overflow-hidden
@@ -65,17 +70,69 @@ export default function ProjectModal({ project }) {
         <h2 className="text-3xl font-semibold">Qué hice y por qué?</h2>
 
         {project.backendExplain && (
-          <p className="text-[#75777E] dark:text-[#7e8088]">
-            <strong className="text-[#e4e2e5d5]">Backend:</strong>{" "}
+          <p
+            className="text-black/70 
+            dark:text-[#7e8088]"
+          >
+            <strong
+              className="text-black 
+              dark:text-[#e4e2e5d5]"
+            >
+              Backend:
+            </strong>{" "}
             {project.backendExplain}
           </p>
         )}
 
         {project.frontendExplain && (
-          <p className="text-[#75777E] dark:text-[#7e8088]">
-            <strong className="text-[#e4e2e5d5]">Frontend:</strong>{" "}
+          <p
+            className="text-black/70 
+            dark:text-[#7e8088]"
+          >
+            <strong
+              className="text-black 
+              dark:text-[#e4e2e5d5]"
+            >
+              Frontend:
+            </strong>{" "}
             {project.frontendExplain}
           </p>
+        )}
+
+        {project.link && (
+          <div className="flex gap-4 mt-2">
+            {project.github && (
+              <a
+                target="_blank"
+                href={project.github}
+                className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
+                hover:bg-black hover:cursor-pointer hover:text-white
+                dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
+              >
+                <icons.githubLight
+                  className="w-5 h-5 transition-all duration-200 
+                dark:invert dark:group-hover:invert-0
+                group-hover:invert"
+                />
+
+                <span>Github</span>
+              </a>
+            )}
+
+            {project.link && (
+              <a
+                target="_blank"
+                href={project.link}
+                className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
+              hover:bg-black hover:cursor-pointer hover:text-white
+              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
+              >
+                <Icon name={"open_in_new"} size={16} />
+
+                <span>Ver</span>
+              </a>
+            )}
+          </div>
         )}
       </div>
     </div>
