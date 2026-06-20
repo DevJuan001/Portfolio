@@ -74,12 +74,10 @@ function radiusAsFourCorners(el) {
  * además recorte su contenido (overflow hidden/clip). Esto cubre el patrón
  * típico de Tailwind: un contenedor con `rounded-* + overflow-hidden` envuelve
  * a un hijo sin radio propio o con radio parcial (ej: `rounded-ss-2xl`); el
- * redondeo visible es el del contenedor, no el del hijo. Si no hay ningún
- * ancestro que recorte, se devuelve el primer radio no nulo encontrado.
+ * redondeo visible es el del contenedor, no el del hijo.
  */
 function getEffectiveBorderRadius(element) {
   let el = element;
-  let fallback = null;
   while (el && el !== document.body) {
     const cs = window.getComputedStyle(el);
     const br = cs.borderRadius;
@@ -89,10 +87,11 @@ function getEffectiveBorderRadius(element) {
       /hidden|clip/.test(cs.overflowX);
     const hasRadius = hasNonZeroRadius(br);
     if (clips && hasRadius) return radiusAsFourCorners(el);
-    if (fallback === null && hasRadius) fallback = radiusAsFourCorners(el);
+    // Si este es el propio elemento y tiene radio, lo usamos aunque no recorte.
+    if (el === element && hasRadius) return radiusAsFourCorners(el);
     el = el.parentElement;
   }
-  return fallback || "0px 0px 0px 0px";
+  return "0px 0px 0px 0px";
 }
 
 /**
@@ -213,6 +212,7 @@ export const useFlipModal = ({
   location,
   growDirection = "bottom-right",
   id,
+  margin = 20,
 }) => {
   // ANIMACIÓN DE APERTURA
   useEffect(() => {
@@ -258,7 +258,12 @@ export const useFlipModal = ({
       // Es importante hacerlo ANTES de modificar cualquier estilo para obtener valores correctos.
       const fullWidth = modal.offsetWidth;
       const fullHeight = modal.offsetHeight;
-      const finalBg = window.getComputedStyle(modal).backgroundColor;
+      const modalCs = window.getComputedStyle(modal);
+      const finalBg = modalCs.backgroundColor;
+      // Leemos el borderRadius real del modal definido por modalStyles.js
+      // (ej: rounded-[32px], rounded-none, etc.) ANTES de sobrescribirlo abajo.
+      // Así respetamos el radio que cada tipo de modal configure.
+      const finalBorderRadius = radiusAsFourCorners(modal);
 
       // Anulamos min-height/min-width con !important para que GSAP pueda encoger
       // el modal hasta el tamaño del botón durante la animación FLIP.
@@ -305,9 +310,6 @@ export const useFlipModal = ({
       // Cálculo de posición final del modal
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-
-      // Margen que minimo que aplicaremos al modal container
-      const margin = 20;
 
       let finalLeft;
       let finalTop;
@@ -414,7 +416,7 @@ export const useFlipModal = ({
         height: fullHeight,
         margin: 0,
         backgroundColor: finalBg,
-        borderRadius: "32px",
+        borderRadius: finalBorderRadius,
         overflow: "hidden",
         clearProps: "transform,x,y,scale,xPercent,yPercent",
       });
@@ -619,6 +621,7 @@ export const useFlipModal = ({
     overlayRef,
     id,
     growDirection,
+    margin,
   ]);
 
   // ANIMACIÓN DE CIERRE
@@ -696,8 +699,7 @@ export const useFlipModal = ({
       for (const pair of sharedPairs) {
         // Si el usuario cerró antes de que terminara la apertura, el target
         // pudo quedar con visibility:hidden !important inline. Lo removemos
-        // para que el phantom (clon) no herede esa invisibilidad y además
-        // para que el target vuelva a un estado limpio.
+        // ANTES de clonar para que el phantom no herede esa invisibilidad.
         pair.target.style.removeProperty("visibility");
         pair.target.style.removeProperty("opacity");
 
@@ -711,10 +713,15 @@ export const useFlipModal = ({
         const isImage = pair.target.tagName === "IMG";
         const fromFontSize = isImage ? null : window.getComputedStyle(pair.target).fontSize;
         closePhantoms.push({ phantom, pair, fromBR, fromFontSize });
-
-        // Ocultamos el target en la modal
-        gsap.set(pair.target, { opacity: 0 });
       }
+
+      // Ocultamos TODO el content del modal durante el viaje de los phantoms.
+      // Usamos visibility:hidden con !important inline. A diferencia de opacity,
+      // visibility se hereda a los hijos y NO la sobrescribe el Flip.from con
+      // nested:true (que restaura opacity/scale de los hijos pero no visibility).
+      // Así evitamos que se vea el texto del modal "por debajo" del phantom.
+      // Lo restauramos en el cleanup cuando la animación termina.
+      content.style.setProperty("visibility", "hidden", "important");
 
       // Aqui capturamos los estilos actuales del modal abierto.
       const state = Flip.getState([modal, ...modalShared], {
@@ -793,6 +800,9 @@ export const useFlipModal = ({
           opacity: 1,
           clearProps: "opacity",
         });
+        // Restauramos la visibilidad del content que ocultamos durante el
+        // viaje de los phantoms de cierre.
+        content.style.removeProperty("visibility");
         // Crossfade de salida para los phantoms de cierre
         for (const { phantom } of closePhantoms) {
           gsap.killTweensOf(phantom);
