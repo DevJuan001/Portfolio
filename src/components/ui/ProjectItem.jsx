@@ -112,6 +112,7 @@ export default function ProjectItem({ project }) {
         <Modal
           isOpen={isOpen}
           type="project"
+          margin={0}
           location="center"
           triggerRef={triggerRef}
           onClose={closeModal}
