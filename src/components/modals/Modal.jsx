@@ -1,8 +1,8 @@
-import Icon from "./Icon";
+import Icon from "../ui/Icon";
 import { createPortal } from "react-dom";
 import React, { useRef, useId } from "react";
-import { useFlipModal } from "../hooks/useFlipModal";
-import { modal_styles } from "../data/modalStyles";
+import { useFlipModal } from "../../hooks/useFlipModal";
+import { modal_styles } from "../../data/modalStyles";
 
 export default function Modal({
   isOpen,

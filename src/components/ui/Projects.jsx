@@ -1,6 +1,6 @@
 import ProjectItem from "./ProjectItem";
-import { projects } from "../data/projects";
-import { technologies } from "../data/technologies";
+import { projects } from "../../data/projects";
+import { technologies } from "../../data/technologies";
 
 export default function Projects() {
   const extendedProjects = projects.map((project) => ({

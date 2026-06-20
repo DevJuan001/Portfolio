@@ -7,8 +7,11 @@ export default function SectionsContainer() {
   return (
     <main className="px-8 pb-8">
       <Hero />
+      
       <Projects />
+      
       <Contact />
+      
       <Footer />
     </main>
   );

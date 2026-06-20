@@ -1,12 +1,12 @@
 // Hooks
-import { useModal } from "../hooks/useModal";
+import { useModal } from "../../hooks/useModal";
 // Icons
-import { icons } from "../assets/icons";
+import { icons } from "../../assets/icons";
 // Componentes
 import Icon from "./Icon";
 // Modales
-import Modal from "./Modal";
-import ProjectModal from "./ProjectModal";
+import Modal from "../modals/Modal";
+import ProjectModal from "../modals/ProjectModal";
 
 export default function ProjectItem({ project }) {
   const { modalType, modalData, isOpen, triggerRef, openModal, closeModal } =
@@ -46,7 +46,11 @@ export default function ProjectItem({ project }) {
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-2xl font-semibold dark:text-gray-100">
+        <h3
+          data-shared-id="project-title"
+          className="text-2xl font-semibold 
+          dark:text-gray-100"
+        >
           {project.title}
         </h3>
 
@@ -112,11 +116,7 @@ export default function ProjectItem({ project }) {
           triggerRef={triggerRef}
           onClose={closeModal}
         >
-          {modalType === "Tracklinker" && <ProjectModal project={modalData} />}
-          {modalType ===
-            "Parking SAAS — Sistema de gestión de parqueaderos" && (
-            <ProjectModal project={modalData} />
-          )}
+          {modalType === project.title && <ProjectModal project={modalData} />}
         </Modal>
       )}
     </div>

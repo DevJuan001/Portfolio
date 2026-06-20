@@ -1,13 +1,13 @@
 // Hooks
-import { useModal } from "../hooks/useModal";
-import { useTheme } from "../hooks/useTheme";
-import { useScrolled } from "../hooks/useScrolled";
+import { useModal } from "../../hooks/useModal";
+import { useTheme } from "../../hooks/useTheme";
+import { useScrolled } from "../../hooks/useScrolled";
 // Data
-import { headerSections } from "../data/headerSections";
+import { headerSections } from "../../data/headerSections";
 // Componentes
 import Icon from "./Icon";
-import Modal from "./Modal";
-import ThemeModal from "./ThemeModal";
+import Modal from "../modals/Modal";
+import ThemeModal from "../modals/ThemeModal";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();

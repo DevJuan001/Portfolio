@@ -1,4 +1,4 @@
-import { useCarrousel } from "../hooks/useCarrousel";
+import { useCarrousel } from "../../hooks/useCarrousel";
 
 export default function ProjectModal({ project }) {
   const images = project.images ?? [project.image];
@@ -22,12 +22,14 @@ export default function ProjectModal({ project }) {
             ${i === current ? "w-[90%]" : "w-[10%]"}`}
           >
             <img
+              onClick={() => goTo(i)}
               data-shared-id="project-main-image"
               src={image}
               alt={project.alt}
               className={`w-full h-full rounded-2xl transition-opacity duration-500 aspect-video
-              dark:border-[#000000]
-              ${i === current ? "opacity-100" : "opacity-2 dark:opacity-2"}`}
+                hover:cursor-pointer
+                dark:border-[#000000]
+                ${i === current ? "opacity-100" : "opacity-1.5 dark:opacity-1"}`}
             />
           </div>
         ))}
@@ -52,23 +54,29 @@ export default function ProjectModal({ project }) {
       </div>
 
       <div className="flex flex-col gap-3 px-2">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-semibold">Qué hice y por qué?</h2>
+        <h2
+          data-shared-id="project-title"
+          className="text-2xl font-semibold 
+          dark:text-gray-100"
+        >
+          {project.title}
+        </h2>
 
-          {project.backendExplain && (
-            <p className="text-[#75777E] dark:text-[#7e8088]">
-              <strong className="text-[#3a3b3d]">Backend:</strong>{" "}
-              {project.backendExplain}
-            </p>
-          )}
+        <h2 className="text-3xl font-semibold">Qué hice y por qué?</h2>
 
-          {project.frontendExplain && (
-            <p className="text-[#75777E] dark:text-[#7e8088]">
-              <strong className="text-[#3a3b3d]">Frontend:</strong>{" "}
-              {project.frontendExplain}
-            </p>
-          )}
-        </div>
+        {project.backendExplain && (
+          <p className="text-[#75777E] dark:text-[#7e8088]">
+            <strong className="text-[#e4e2e5d5]">Backend:</strong>{" "}
+            {project.backendExplain}
+          </p>
+        )}
+
+        {project.frontendExplain && (
+          <p className="text-[#75777E] dark:text-[#7e8088]">
+            <strong className="text-[#e4e2e5d5]">Frontend:</strong>{" "}
+            {project.frontendExplain}
+          </p>
+        )}
       </div>
     </div>
   );
