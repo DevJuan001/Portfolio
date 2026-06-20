@@ -1,5 +1,6 @@
 export const modal_styles = {
-  theme: "p-2 w-[200px]",
-  project: "p-6 w-screen md:w-3xl lg:w-4xl",
-  default: "p-7 w-[400px] md:w-[500px]",
+  theme: "p-2 w-[200px] rounded-[32px]",
+  project: "p-6 w-screen rounded-none md:w-3xl md:rounded-[32px] lg:w-4xl",
+  default: "p-7 w-[400px] md:w-[500px] rounded-[32px]",
 };
+
