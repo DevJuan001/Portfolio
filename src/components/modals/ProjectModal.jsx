@@ -6,17 +6,17 @@ import { icons } from "../../assets/icons";
 import Icon from "../ui/Icon";
 
 export default function ProjectModal({ project }) {
-  const images = project.images ?? [project.image];
+  const images = project?.images ?? [project?.image];
   const { current, goTo } = useCarrousel(images);
 
   return (
     <div
-      className="flex flex-col gap-4
-      dark:text-white overflow-y-auto"
+      className="flex flex-col items-center justify-center gap-4 overflow-y-auto
+      dark:text-white"
     >
       <div
-        className="relative max-h-72 flex gap-3 shadow-[0px_0px_0px_0px_#000] overflow-hidden
-        md:max-h-[420px]"
+        className="relative max-h-80 flex items-center justify-center gap-3 shadow-[0px_0px_0px_0px_#000] overflow-hidden
+        md:max-h-[700px] md:w-4xl"
       >
         {images.map((image, i) => (
           <div
@@ -58,83 +58,118 @@ export default function ProjectModal({ project }) {
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 px-2">
+      <div
+        className="w-full flex flex-col gap-4 px-2
+        md:w-4xl"
+      >
         <h2
           data-shared-id="project-title"
-          className="text-2xl font-semibold 
+          className="text-3xl font-semibold
           dark:text-gray-100"
         >
-          {project.title}
+          {project?.title}
         </h2>
 
-        <h2 className="text-3xl font-semibold">Qué hice y por qué?</h2>
+        {project?.objective && (
+          <div className="w-full flex flex-col gap-2">
+            <h2 className="text-2xl font-semibold">Reto</h2>
 
-        {project.backendExplain && (
-          <p
-            className="text-black/70 
-            dark:text-[#7e8088]"
-          >
-            <strong
-              className="text-black 
-              dark:text-[#e4e2e5d5]"
+            <p
+              className="text-black/70
+              dark:text-[#F1F1F1]"
             >
-              Backend:
-            </strong>{" "}
-            {project.backendExplain}
-          </p>
+              {project?.challenge}
+            </p>
+          </div>
         )}
 
-        {project.frontendExplain && (
-          <p
-            className="text-black/70 
-            dark:text-[#7e8088]"
-          >
-            <strong
-              className="text-black 
-              dark:text-[#e4e2e5d5]"
+        {project?.objective && (
+          <div className="w-full flex flex-col gap-2">
+            <h2 className="text-2xl font-semibold">Objetivo</h2>
+
+            <p
+              className="text-black/70
+              dark:text-[#F1F1F1]"
             >
-              Frontend:
-            </strong>{" "}
-            {project.frontendExplain}
-          </p>
+              {project?.objective}
+            </p>
+
+            {project?.objectiveModules.map((module) => (
+              <div
+                key={module.title}
+                className="text-black/70
+                dark:text-[#F1F1F1]"
+              >
+                <span>{module.title}</span>
+
+                <ul>
+                  {module.items.map((item, index) => (
+                    <li key={index} className="flex items-center gap-1">
+                      <Icon name={"check_small"} size={14} />
+
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
 
-        {project.link && (
-          <div className="flex gap-4 mt-2">
-            {project.github && (
-              <a
-                target="_blank"
-                href={project.github}
-                className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-                hover:bg-black hover:cursor-pointer hover:text-white
-                dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
-              >
-                <icons.githubLight
-                  className="w-5 h-5 transition-all duration-200 
-                dark:invert dark:group-hover:invert-0
-                group-hover:invert"
-                />
+        {project?.technicalDecisions && (
+          <div className="w-full flex flex-col gap-3">
+            <h2 className="text-2xl font-semibold">Decisiones técnicas</h2>
 
-                <span>Github</span>
-              </a>
-            )}
-
-            {project.link && (
-              <a
-                target="_blank"
-                href={project.link}
-                className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black hover:cursor-pointer hover:text-white
-              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
-              >
-                <Icon name={"open_in_new"} size={16} />
-
-                <span>Ver</span>
-              </a>
-            )}
+            <ul className="pl-6 list-disc">
+              {project?.technicalDecisions?.map((item, index) => (
+                <li
+                  key={index}
+                  className="mb-2 text-black/70
+                  dark:text-[#F1F1F1]"
+                >
+                  <strong>{item?.title}</strong> {item?.explain}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
+
+      {project.link && (
+        <div className="flex gap-4 mt-2">
+          {project.github && (
+            <a
+              target="_blank"
+              href={project.github}
+              className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
+              hover:bg-black hover:cursor-pointer hover:text-white
+              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
+            >
+              <icons.githubLight
+                className="w-5 h-5 transition-all duration-200 
+                  group-hover:invert
+                  dark:invert dark:group-hover:invert-0"
+              />
+
+              <span>Github</span>
+            </a>
+          )}
+
+          {project.link && (
+            <a
+              target="_blank"
+              href={project.link}
+              className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
+              hover:bg-black hover:cursor-pointer hover:text-white
+              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
+            >
+              <Icon name={"open_in_new"} size={16} />
+
+              <span>Ver</span>
+            </a>
+          )}
+        </div>
+      )}
     </div>
   );
 }
