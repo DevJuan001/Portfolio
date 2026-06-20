@@ -1,13 +1,13 @@
 // Hooks
-import { useModal } from "../hooks/useModal";
-import { useTheme } from "../hooks/useTheme";
-import { useScrolled } from "../hooks/useScrolled";
+import { useModal } from "../../hooks/useModal";
+import { useTheme } from "../../hooks/useTheme";
+import { useScrolled } from "../../hooks/useScrolled";
 // Data
-import { headerSections } from "../data/headerSections";
+import { headerSections } from "../../data/headerSections";
 // Componentes
 import Icon from "./Icon";
-import Modal from "./Modal";
-import ThemeModal from "./ThemeModal";
+import Modal from "../modals/Modal";
+import ThemeModal from "../modals/ThemeModal";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
@@ -23,14 +23,15 @@ export default function Header() {
         className={`my-4 flex gap-3 p-2
         ${
           scrolled
-            ? "border rounded-full border-gray-200 dark:border-white/10 backdrop-blur-xs"
+            ? `border rounded-full border-gray-200 backdrop-blur-xs
+            dark:border-white/10 dark:shadow-[0px_0px_1.5px_0.1px_#000]`
             : "border-transparent"
         }`}
       >
         {headerSections.map((section) => (
           <a
             key={section.title}
-            className="py-2 px-4 rounded-3xl text-sm text-[#75777E] font-semibold
+            className="py-2 px-4 rounded-3xl text-sm text-[#75777E] font-semibold transition-colors duration-300
             hover:bg-gray-200 hover:text-[#1b1b1e]
             dark:text-[#d1d5db] dark:hover:text-white dark:hover:bg-[#28282b]"
             href={section.url}

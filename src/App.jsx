@@ -1,6 +1,6 @@
 import { useTheme } from "./hooks/useTheme";
-import Header from "./components/Header";
-import SectionsContainer from "./components/SectionsContainer";
+import Header from "./components/ui/Header";
+import SectionsContainer from "./components/ui/SectionsContainer";
 
 function App() {
   useTheme();
@@ -8,7 +8,9 @@ function App() {
   return (
     <div className="w-full">
       <Header />
+
       <SectionsContainer />
+
       <div id="modal-root"></div>
     </div>
   );

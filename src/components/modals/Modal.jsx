@@ -1,8 +1,8 @@
-import Icon from "./Icon";
+import Icon from "../ui/Icon";
 import { createPortal } from "react-dom";
 import React, { useRef, useId } from "react";
-import { useFlipModal } from "../hooks/useFlipModal";
-import { modal_styles } from "../data/modalStyles";
+import { useFlipModal } from "../../hooks/useFlipModal";
+import { modal_styles } from "../../data/modalStyles";
 
 export default function Modal({
   isOpen,
@@ -11,6 +11,7 @@ export default function Modal({
   z_index = "50",
   location = "anchored",
   growDirection = "bottom-right",
+  margin = 20,
   title,
   children,
   onClose,
@@ -40,6 +41,7 @@ export default function Modal({
     onClose,
     location,
     growDirection,
+    margin,
     id: modalId,
   });
 
@@ -71,14 +73,14 @@ export default function Modal({
           overflowY: "auto",
         }}
         ref={modalRef}
-        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] rounded-[32px] shadow-lg
-        dark:border dark:bg-black dark:border-[#1e1e209f]`}
+        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] shadow-lg
+        dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
       >
         <div ref={contentRef}>
           {type !== "theme" && (
             <header className="flex justify-between items-center mb-2">
               <span
-                data-flip-id="modal-title"
+                data-shared-id="modal-title"
                 className="min-w-56 font-medium text-lg dark:text-[#e4e2e5]"
               >
                 {title}

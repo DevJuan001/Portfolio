@@ -1,62 +1,61 @@
+// Hooks
+import { useModal } from "../../hooks/useModal";
+// Icons
+import { icons } from "../../assets/icons";
+// Componentes
 import Icon from "./Icon";
-import { icons } from "../assets/icons";
-import { useModal } from "../hooks/useModal";
-import Modal from "./Modal";
-import ProjectModal from "./ProjectModal";
+// Modales
+import Modal from "../modals/Modal";
+import ProjectModal from "../modals/ProjectModal";
 
-export default function ProjectItem({
-  images,
-  alt,
-  title,
-  shortDescription,
-  description,
-  github,
-  link,
-  stack,
-}) {
+export default function ProjectItem({ project }) {
   const { modalType, modalData, isOpen, triggerRef, openModal, closeModal } =
     useModal();
 
   return (
     <div
       onClick={(e) => {
-        e.preventDefault();
-        openModal(
-          {
-            images,
-            alt,
-            title,
-            shortDescription,
-            description,
-            github,
-            link,
-            stack,
-          },
-          title,
-          e.currentTarget,
-        );
+        e.stopPropagation();
+        openModal(project, project.title, e.currentTarget);
       }}
-      className="flex flex-col gap-3 rounded-3xl p-4 transition-colors duration-200
+      className="flex flex-col gap-3 rounded-3xl p-3 transition-colors duration-200
       hover:bg-[#e5e7eb70] hover:cursor-pointer
-      dark:bg-[#0f0f11] dark:hover:bg-[#28282b]"
+      dark:bg-[#101012] dark:hover:bg-[#202022]"
     >
       <div
-        className="h-72 bg-gray-200 p-3 rounded-2xl overflow-hidden
-        dark:bg-[#28282b]"
+        className="relative h-44 rounded-2xl shadow-md overflow-hidden
+        md:h-80"
       >
         <img
-          src={images[0]}
-          alt={alt}
-          className="ml-28 w-full border-[5px] rounded-2xl
-         dark:border-gray-200"
+          data-shared-id="project-main-image"
+          src={project.images[0]}
+          alt={project.alt}
+          className="h-full rounded-2xl"
         />
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            openModal(project, project.title, e.currentTarget);
+          }}
+          className="absolute top-2 right-2 flex items-center p-2 backdrop-blur-md shadow-[0px_0px_5px_1px_#6a7282] rounded-3xl
+          md:backdrop-blur-xs  md:hover:backdrop-blur-sm"
+        >
+          <Icon name={"expand_content"} color={"#fff"} />
+        </button>
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-xl font-semibold dark:text-gray-100">{title}</h3>
+        <h3
+          data-shared-id="project-title"
+          className="text-2xl font-semibold 
+          dark:text-gray-100"
+        >
+          {project.title}
+        </h3>
 
         <div className="flex flex-wrap gap-2">
-          {stack.map((technology) => (
+          {project.stack.map((technology) => (
             <div
               key={technology.name}
               className={`flex items-center gap-1 py-1 px-2.5 rounded-full 
@@ -64,18 +63,21 @@ export default function ProjectItem({
               `}
             >
               <technology.icon className="w-3.5 h-3.5" />
+
               <span className="text-xs font-medium">{technology.name}</span>
             </div>
           ))}
         </div>
 
-        <p className="text-[#75777E] dark:text-[#7e8088]">{shortDescription}</p>
+        <p className="text-[#75777E] dark:text-[#7e8088]">
+          {project.description}
+        </p>
 
         <div className="flex gap-4 mt-2">
-          {github && (
+          {project.github && (
             <a
               target="_blank"
-              href={github}
+              href={project.github}
               className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
                 hover:bg-black hover:cursor-pointer hover:text-white
                 dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
@@ -90,10 +92,10 @@ export default function ProjectItem({
             </a>
           )}
 
-          {link && (
+          {project.link && (
             <a
               target="_blank"
-              href={link}
+              href={project.link}
               className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
               hover:bg-black hover:cursor-pointer hover:text-white
               dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
@@ -110,11 +112,12 @@ export default function ProjectItem({
         <Modal
           isOpen={isOpen}
           type="project"
+          margin={0}
           location="center"
           triggerRef={triggerRef}
           onClose={closeModal}
         >
-          {modalType === "Tracklinker" && <ProjectModal project={modalData} />}
+          {modalType === project.title && <ProjectModal project={modalData} />}
         </Modal>
       )}
     </div>
