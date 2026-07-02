@@ -16,9 +16,9 @@ export default function ProjectModal({ project }) {
         xl:h-[230px]
         2xl:h-[235px]"
       >
-        {images.map((image) => (
+        {images.map((image, index) => (
           <img
-            data-shared-id="project-main-image"
+            data-shared-id={index === 0 ? "project-main-image" : ""}
             src={image}
             alt={project.alt}
             className={`w-auto h-full rounded-2xl object-cover
@@ -47,7 +47,7 @@ export default function ProjectModal({ project }) {
               data-shared-id="open-project-button"
               href={project.link}
               className="flex items-center gap-2 py-2 px-4 bg-black text-white border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black/90 hover:cursor-pointer
+              hover:bg-black/85 hover:cursor-pointer
               dark:bg-white dark:text-black dark:border-[#3a3d43] dark:hover:bg-neutral-200"
             >
               <Icon name={"open_in_new"} size={16} />

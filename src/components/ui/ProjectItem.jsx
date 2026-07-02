@@ -22,28 +22,13 @@ export default function ProjectItem({ project }) {
       hover:bg-[#e5e7eb70] hover:cursor-pointer
       dark:bg-[#101012] dark:hover:bg-[#202022]"
     >
-      <div
-        className="relative h-44 rounded-2xl shadow-md overflow-hidden
+      <img
+        data-shared-id="project-main-image"
+        src={project.images[0]}
+        alt={project.alt}
+        className="h-44 w-full rounded-2xl 
         md:h-80"
-      >
-        <img
-          data-shared-id="project-main-image"
-          src={project.images[0]}
-          alt={project.alt}
-          className="h-full w-full rounded-2xl object-cover"
-        />
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            openModal(project, project.title, e.currentTarget);
-          }}
-          className="absolute top-2 right-2 flex items-center p-2 backdrop-blur-md shadow-[0px_0px_5px_1px_#6a7282] rounded-3xl
-          md:backdrop-blur-xs md:hover:backdrop-blur-sm"
-        >
-          <Icon name={"expand_content"} color={"#fff"} />
-        </button>
-      </div>
+      />
 
       <div className="flex flex-col gap-2">
         <h3
@@ -80,7 +65,7 @@ export default function ProjectItem({ project }) {
               data-shared-id="open-project-button"
               href={project.link}
               className="flex items-center gap-2 py-2 px-4 bg-black text-white border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black/90 hover:cursor-pointer
+              hover:bg-black/85 hover:cursor-pointer
               dark:bg-white dark:text-black dark:border-[#3a3d43] dark:hover:bg-neutral-200"
             >
               <Icon name={"open_in_new"} size={16} />
