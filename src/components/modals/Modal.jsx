@@ -72,7 +72,7 @@ export default function Modal({
           maxHeight: "100vh",
         }}
         ref={modalRef}
-        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] shadow-lg
+        className={`${modal_styles[type] ?? modal_styles.default} flex flex-col bg-[#fbf9fc] shadow-lg
         dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
       >
         {type !== "theme" && (
