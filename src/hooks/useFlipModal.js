@@ -39,18 +39,6 @@ function findSharedPairs(sourceContainer, targetContainer, targetModal) {
 }
 
 /**
- * Comprueba si un valor shorthand de borderRadius tiene algún radio real
- * (distinto de 0px/0%). El shorthand puede venir con 1, 2 o 4 valores.
- */
-function hasNonZeroRadius(br) {
-  if (!br) return false;
-  return br.split(/\s+/).some((part) => {
-    const num = parseFloat(part);
-    return !isNaN(num) && num > 0;
-  });
-}
-
-/**
  * Devuelve el borderRadius de un elemento como un string de 4 valores
  * explícitos "TL TR BR BL" (top-left, top-right, bottom-right, bottom-left),
  * leyendo los longhands reales del computed style. Esto evita ambigüedades
@@ -64,34 +52,6 @@ function radiusAsFourCorners(el) {
     cs.borderBottomRightRadius,
     cs.borderBottomLeftRadius,
   ].join(" ");
-}
-
-/**
- * Busca el borderRadius efectivo y VISIBLE de un elemento, devolviéndolo como
- * un string de 4 esquinas "TL TR BR BL".
- * El redondeo que percibe el usuario lo determina el ancestro más cercano
- * (incluyendo al propio elemento) que tenga borderRadius distinto de 0 Y que
- * además recorte su contenido (overflow hidden/clip). Esto cubre el patrón
- * típico de Tailwind: un contenedor con `rounded-* + overflow-hidden` envuelve
- * a un hijo sin radio propio o con radio parcial (ej: `rounded-ss-2xl`); el
- * redondeo visible es el del contenedor, no el del hijo.
- */
-function getEffectiveBorderRadius(element) {
-  let el = element;
-  while (el && el !== document.body) {
-    const cs = window.getComputedStyle(el);
-    const br = cs.borderRadius;
-    const clips =
-      /hidden|clip/.test(cs.overflow) ||
-      /hidden|clip/.test(cs.overflowY) ||
-      /hidden|clip/.test(cs.overflowX);
-    const hasRadius = hasNonZeroRadius(br);
-    if (clips && hasRadius) return radiusAsFourCorners(el);
-    // Si este es el propio elemento y tiene radio, lo usamos aunque no recorte.
-    if (el === element && hasRadius) return radiusAsFourCorners(el);
-    el = el.parentElement;
-  }
-  return "0px 0px 0px 0px";
 }
 
 /**
@@ -124,10 +84,32 @@ function createPhantom(element, rect) {
     margin: "0",
     zIndex: "99999",
     pointerEvents: "none",
-    borderRadius: getEffectiveBorderRadius(element),
+    borderRadius: radiusAsFourCorners(element),
     objectFit: styles.objectFit || "cover",
     overflow: "hidden",
+    // Matamos cualquier CSS transition que el source tuviera (ej:
+    // `transition-all duration-200` en botones). Si la dejáramos, el
+    // browser animaría los inline styles de posición/tamaño desde los
+    // valores default hasta los del rect ANTES de que GSAP tome control,
+    // y cuando el tl.fromTo arranca snap-ea el phantom de vuelta al
+    // sourceRect → el botón se ve "tarde" respecto al modal. Los demás
+    // shared elements (imagen, título) no tienen transition, por eso
+    // esos sí van sincronizados.
+    transition: "none",
+    // Forzamos white-space:nowrap durante el vuelo para que el texto no
+    // se re-wrapee cuando el fontSize cambia. Sin esto, la primera palabra
+    // cabe en el ancho del box pero las siguientes bajan a una nueva línea
+    // (o se salen del box) y no animan correctamente. Con nowrap, todas
+    // las palabras están en una sola línea durante todo el vuelo, creciendo
+    // juntas. El snap-to-final al final copia el white-space del target
+    // (que puede ser "normal" con wrap) antes de revelar el real.
+    whiteSpace: "nowrap",
     willChange: "transform, width, height, top, left, border-radius, opacity",
+    fontWeight: styles.fontWeight,
+    fontFamily: styles.fontFamily,
+    letterSpacing: styles.letterSpacing,
+    textTransform: styles.textTransform,
+    color: styles.color,
   });
 
   // Forzamos visibilidad con !important. El clon hereda los estilos inline
@@ -145,9 +127,14 @@ function createPhantom(element, rect) {
  * Anima un phantom desde su rect actual hasta un rect destino, interpolando
  * ADEMÁS el borderRadius y, opcionalmente, el fontSize desde el valor del
  * source hasta el del target. Animar fontSize (en lugar de transform: scale)
- * hace que el navegador re-rasterice el texto en cada frame, evitando el blur
- * que produce scale. Así el contenido (texto/iconos) crece de forma smooth
- * durante el deslizamiento y al llegar coincide exactamente con el target.
+ * hace que el texto CREZCA de forma nativa — el browser re-rasteriza en
+ * cada frame, evitando el blur que produce scale.
+ *
+ * El roundProps redondea el fontSize a enteros en cada frame para que el
+ * text rendering no fluctúe en valores subpixel (eso causa el "temblor"
+ * que se ve en textos de una sola palabra). El crecimiento se ve en pasos
+ * de 1px que son imperceptibles a 60fps.
+ *
  * Usa expo.out (la misma curva que el FLIP de apertura) para que el
  * deslizamiento vaya al mismo ritmo que la apertura del modal.
  * Retorna el timeline de GSAP para poder encadenarlo.
@@ -158,13 +145,30 @@ function animatePhantom(
   toRect,
   fromBorderRadius,
   toBorderRadius,
-  { duration = 0.38, ease = "expo.out", delay = 0, fromFontSize, toFontSize } = {},
+  {
+    duration = 0.6,
+    ease = "expo.out",
+    delay = 0,
+    fromFontSize,
+    toFontSize,
+  } = {},
 ) {
-  gsap.set(phantom, { force3D: true, willChange: "transform,width,height,top,left,border-radius,opacity" });
+  gsap.set(phantom, {
+    force3D: true,
+    willChange: "transform,width,height,top,left,border-radius,opacity",
+  });
 
   const tl = gsap.timeline();
 
-  // 1) Caja: posición, tamaño, borderRadius.
+  // 1) Caja: posición, tamaño, borderRadius. Redondeamos solo top/left a
+  //    enteros (para evitar subpixel positioning del box). NO redondeamos
+  //    width/height porque cuando el recorrido del phantom es corto, el
+  //    cambio de width/height por frame es < 1px y el roundProps hacía que
+  //    el box se quedara atascado en el tamaño del source durante casi todo
+  //    el vuelo, saltando al tamaño del target solo al final → eso causaba
+  //    que el texto no creciera de forma smooth y se viera un tremble
+  //    cerca del destino. Con subpixel smooth en width/height, el box
+  //    crece de forma continua y el texto acompanha sin saltos.
   tl.fromTo(
     phantom,
     {
@@ -183,18 +187,24 @@ function animatePhantom(
       duration,
       ease,
       delay,
+      roundProps: ["top", "left", "borderRadius"],
     },
   );
 
-  // 2) Font-size: interpolamos desde el del source hasta el del target para
-  //    que el texto/icono crezca de forma smooth durante el vuelo. Solo lo
-  //    hacemos cuando ambos valores difieren (evita work innecesario y
-  //    aplica solo a texto/iconos, no a imágenes donde no tiene sentido).
+  // 2) Font-size: interpolamos desde el del source hasta el del target
+  //    para que el texto/icono crezca de forma smooth y nativa. Usamos
+  //    roundProps para que el rendering no fluctúe en subpixels.
   if (fromFontSize && toFontSize && fromFontSize !== toFontSize) {
     tl.fromTo(
       phantom,
       { fontSize: fromFontSize },
-      { fontSize: toFontSize, duration, ease, delay },
+      {
+        fontSize: toFontSize,
+        duration,
+        ease,
+        delay,
+        roundProps: ["fontSize"],
+      },
       delay,
     );
   }
@@ -213,6 +223,7 @@ export const useFlipModal = ({
   growDirection = "bottom-right",
   id,
   margin = 20,
+  hideTrigger = true,
 }) => {
   // ANIMACIÓN DE APERTURA
   useEffect(() => {
@@ -304,8 +315,13 @@ export const useFlipModal = ({
       });
 
       // Ocultamos el trigger mientras el modal está visible para que no se vea doble.
-      // Usamos !important para ganar sobre cualquier estilo CSS que pueda traer.
-      element.style.setProperty("opacity", "0", "important");
+      // Desactivamos primero cualquier transition CSS (transition-opacity /
+      // transition-colors de Tailwind) para que el cambio sea INSTANTÁNEO
+      // y no se quede visible mientras la transition anima el opacity a 0.
+      if (hideTrigger) {
+        element.style.setProperty("transition", "none", "important");
+        element.style.setProperty("opacity", "0", "important");
+      }
 
       // Cálculo de posición final del modal
       const vw = window.innerWidth;
@@ -432,13 +448,17 @@ export const useFlipModal = ({
       for (const pair of sharedPairs) {
         const sourceRect = pair.source.getBoundingClientRect();
         const targetRect = pair.target.getBoundingClientRect();
-        const fromBR = getEffectiveBorderRadius(pair.source);
-        const toBR = getEffectiveBorderRadius(pair.target);
+        const fromBR = radiusAsFourCorners(pair.source);
+        const toBR = radiusAsFourCorners(pair.target);
         // Font-size del source y del target para interpolarlo durante el
         // vuelo. Solo aplicable a texto/iconos (no a imágenes).
         const isImage = pair.source.tagName === "IMG";
-        const fromFontSize = isImage ? null : window.getComputedStyle(pair.source).fontSize;
-        const toFontSize = isImage ? null : window.getComputedStyle(pair.target).fontSize;
+        const fromFontSize = isImage
+          ? null
+          : window.getComputedStyle(pair.source).fontSize;
+        const toFontSize = isImage
+          ? null
+          : window.getComputedStyle(pair.target).fontSize;
 
         // Creamos el phantom posicionado sobre el elemento fuente, con la
         // forma (borderRadius) visible del source.
@@ -462,7 +482,7 @@ export const useFlipModal = ({
         // el FLIP de apertura del modal, así el deslizamiento va al mismo
         // ritmo que la apertura y no se siente rezagado/lento.
         animatePhantom(phantom, sourceRect, targetRect, fromBR, toBR, {
-          duration: 0.38,
+          duration: 0.6,
           ease: "expo.out",
           fromFontSize,
           toFontSize,
@@ -478,7 +498,7 @@ export const useFlipModal = ({
         Flip.from(state, {
           targets: [modal, ...modalShared],
           nested: true,
-          duration: 0.38,
+          duration: 0.6,
           ease: "expo.out",
           props: "borderRadius,backgroundColor,color,padding",
           onComplete: () => {
@@ -488,22 +508,17 @@ export const useFlipModal = ({
             modal.style.removeProperty("min-height");
             modal.style.removeProperty("min-width");
 
-            gsap.set(modal, {
-              overflowY: "auto",
-              willChange: "auto",
-              height: "auto",
-              clearProps: "backgroundColor,color,padding",
-            });
-
-            // Forzamos un reflow para que el layout del modal se estabilice
-            // en su estado final natural (height:auto) ANTES de medir el target.
-            // Si midiéramos antes de este reflow, el target aún estaría en una
-            // posición intermedia y el snap del phantom quedaría desalineado
-            // con su posición real final → se vería como un brinco al revelar.
+            // Forzamos un reflow para estabilizar el layout en fullHeight (el
+            // estado durante el cual se animó el phantom). Hacemos el snap
+            // ANTES de pasar a height:auto porque ese cambio puede reposicionar
+            // el target dentro del modal; si midieramos después, el snap-clone
+            // nacería en una posición distinta a la del phantom → brinco.
             modal.offsetHeight;
 
             // Mantenemos el trigger oculto mientras el modal siga abierto
-            element.style.setProperty("opacity", "0", "important");
+            if (hideTrigger) {
+              element.style.setProperty("opacity", "0", "important");
+            }
 
             // Snap + Swap invisible: el phantom viajero es un clon del SOURCE,
             // así que aunque su caja coincida con el target, su CONTENIDO se
@@ -514,65 +529,85 @@ export const useFlipModal = ({
             // por un clon EXACTO del target, posicionado sobre él. Como este
             // snap-clone es idéntico al target en todo (contenido, estilos,
             // forma, tamaño), revelar el target y retirar el snap-clone es un
-            // cambio invisible. Además desactivamos las transiciones CSS del
-            // target (ej: transition-opacity duration-500) para que el reveal
-            // sea instantáneo y no compita con nuestro set.
+            // Snap invisible estilo: el phantom ya fue animado durante
+            // la apertura para coincidir con el target (misma posición,
+            // tamaño, borderRadius, fontSize). En lugar de montar un
+            // snap-clone intermedio (que añadía frames de transición y se
+            // notaba como un salto), hacemos el mismo swap instantáneo del
+            // cierre: matamos el tween, revelamos el target y retiramos el
+            // phantom en el mismo frame. Como el phantom y el target son
+            // visualmente idénticos en ese punto, el swap es invisible.
             for (const { phantom, pair } of phantoms) {
               gsap.killTweensOf(phantom);
 
-              const finalRect = pair.target.getBoundingClientRect();
-              const isImg = pair.target.tagName === "IMG";
+              // Snap-to-final: el phantom es un clon del SOURCE, así que
+              // hereda sus propiedades (fontSize, fontVariationSettings,
+              // fontWeight, etc.). Aunque animamos fontSize, otras como
+              // fontVariationSettings (opsz en iconos) NO se animan y
+              // hacen que el glyph se renderice con métricas distintas
+              // al del target dentro del box → "sale más abajo".
+              // Solución: copiar TODAS las propiedades visuales del target
+              // al phantom justo antes del swap para que sean pixel-perfect.
               const targetStyles = window.getComputedStyle(pair.target);
+              const finalRect = pair.target.getBoundingClientRect();
 
-              // Retiramos el phantom viajero (clon del source).
-              phantom.remove();
-
-              // Creamos un clon EXACTO del target y lo posicionamos sobre él.
-              const snapClone = pair.target.cloneNode(true);
-              snapClone.removeAttribute("id");
-              snapClone.removeAttribute("data-shared-id");
-              snapClone.classList.add("shared-element-phantom");
-              // Quitamos clases rounded-* para que el radio lo controle el inline.
-              Array.from(snapClone.classList).forEach((cls) => {
-                if (cls.startsWith("rounded")) snapClone.classList.remove(cls);
-              });
-              Object.assign(snapClone.style, {
-                position: "fixed",
-                top: `${finalRect.top}px`,
-                left: `${finalRect.left}px`,
-                width: `${finalRect.width}px`,
-                height: `${finalRect.height}px`,
-                margin: "0",
-                zIndex: "99999",
-                pointerEvents: "none",
-                borderRadius: getEffectiveBorderRadius(pair.target),
-                objectFit: isImg ? targetStyles.objectFit || "cover" : "",
-                overflow: "hidden",
-                opacity: "1",
-                transition: "none",
-              });
-              document.body.appendChild(snapClone);
+              const snapStyle = {
+                top: finalRect.top,
+                left: finalRect.left,
+                width: finalRect.width,
+                height: finalRect.height,
+                clearProps: "transform,x,y,xPercent,yPercent",
+                borderRadius: radiusAsFourCorners(pair.target),
+                fontSize: targetStyles.fontSize,
+                fontVariationSettings: targetStyles.fontVariationSettings,
+                fontWeight: targetStyles.fontWeight,
+                fontFamily: targetStyles.fontFamily,
+                letterSpacing: targetStyles.letterSpacing,
+                textTransform: targetStyles.textTransform,
+                color: targetStyles.color,
+                backgroundColor: targetStyles.backgroundColor,
+                backgroundImage: targetStyles.backgroundImage,
+                boxShadow: targetStyles.boxShadow,
+                filter: targetStyles.filter,
+                opacity: targetStyles.opacity,
+                overflow: targetStyles.overflow,
+              };
+              gsap.set(phantom, snapStyle);
 
               // Desactivamos transiciones CSS del target para un reveal
               // instantáneo (sin que transition-opacity lo anime lentamente).
               const prevTransition = pair.target.style.transition;
               pair.target.style.transition = "none";
 
-              // Revelamos el target real, debajo del snap-clone idéntico.
+              // Revelamos el target real instantáneamente.
               // Quitamos los !important de visibility/opacity que fijamos al
               // inicio para que el target vuelva a ser visible.
               pair.target.style.removeProperty("visibility");
               pair.target.style.removeProperty("opacity");
               gsap.set(pair.target, { opacity: 1, clearProps: "opacity" });
 
-              // Retiramos el snap-clone: al ser idéntico al target, es invisible.
-              snapClone.remove();
+              // Retiramos el phantom en el mismo frame.
+              phantom.remove();
 
               // Restauramos las transiciones CSS del target en el próximo frame.
               requestAnimationFrame(() => {
                 if (pair.target) pair.target.style.transition = prevTransition;
               });
             }
+
+            // Tras el snap (ya con el target revelado y el phantom retirado),
+            // liberamos el modal a su altura natural y activamos el scroll
+            // en el content (children), NO en el modal. El header con el
+            // botón de cerrar debe quedar fijo arriba sin scrollear, así que
+            // el overflow vive en el div de children que tiene flex-1.
+            gsap.set(content, {
+              overflowY: "auto",
+            });
+            gsap.set(modal, {
+              willChange: "auto",
+              height: "auto",
+              clearProps: "backgroundColor,color,padding",
+            });
           },
         }),
       );
@@ -597,11 +632,13 @@ export const useFlipModal = ({
         .querySelectorAll(".shared-element-phantom")
         .forEach((p) => p.remove());
       if (element) {
-        element.style.removeProperty("opacity");
-        gsap.set(element, {
-          opacity: 1,
-          clearProps: "opacity",
-        });
+        if (hideTrigger) {
+          element.style.removeProperty("opacity");
+          gsap.set(element, {
+            opacity: 1,
+            clearProps: "opacity",
+          });
+        }
       }
       // Restauramos la visibilidad de los targets por si la animación se
       // canceló antes de que el phantom llegara.
@@ -622,6 +659,7 @@ export const useFlipModal = ({
     id,
     growDirection,
     margin,
+    hideTrigger,
   ]);
 
   // ANIMACIÓN DE CIERRE
@@ -651,12 +689,23 @@ export const useFlipModal = ({
       // Matamos tweens activos para evitar conflictos si el usuario cierra durante una apertura
       gsap.killTweensOf([modal, content, overlay, element]);
 
-      // Restauramos el trigger temporalmente a visible para poder leer su estilos
-      element.style.removeProperty("opacity");
-      gsap.set(element, { opacity: 1 });
-
-      // Ocultamos el trigger durante la animación
-      gsap.set(element, { opacity: 0 });
+      // Solo se desvanece el shared element DENTRO del trigger (texto/icono)
+      // para que el phantom del modal vuele de vuelta y se "fusione" con el
+      // botón sin que se vea el contenido del trigger por debajo.
+      // Si el trigger estaba oculto (hideTrigger:true), lo mostramos con un
+      // fade suave para que no aparezca de golpe. Lo delay-eamos para que
+      // el trigger EMPIECE a aparecer cuando la modal ya está llegando a su
+      // destino (no desde el inicio del cierre) — así se siente como un
+      // único movimiento de "la modal se encoge y el botón aparece", no
+      // como dos cosas compitiendo.
+      if (hideTrigger) {
+        gsap.to(element, {
+          opacity: 1,
+          duration: 0.23,
+          ease: "power2.out",
+          delay: 0.12,
+        });
+      }
 
       // Ocultamos overflow para que el contenido del modal no se desborde
       gsap.set(modal, { overflow: "hidden" });
@@ -709,19 +758,26 @@ export const useFlipModal = ({
         // forma (borderRadius) visible del target. Guardamos fromBR y fromFontSize
         // para interpolarlos hasta los valores del source en el viaje de vuelta.
         const phantom = createPhantom(pair.target, targetRect);
-        const fromBR = getEffectiveBorderRadius(pair.target);
+        const fromBR = radiusAsFourCorners(pair.target);
         const isImage = pair.target.tagName === "IMG";
-        const fromFontSize = isImage ? null : window.getComputedStyle(pair.target).fontSize;
+        const fromFontSize = isImage
+          ? null
+          : window.getComputedStyle(pair.target).fontSize;
         closePhantoms.push({ phantom, pair, fromBR, fromFontSize });
+
+        // Ocultamos el shared element DENTRO del trigger con un fade suave.
+        // El botón (trigger) permanece visible — solo se desvanece el
+        // texto/icono que va a ser "reemplazado" por el phantom del modal
+        // durante el vuelo el contenedor nunca se va.
+        gsap.to(pair.source, { opacity: 0, duration: 0.15, ease: "power2.in" });
       }
 
-      // Ocultamos TODO el content del modal durante el viaje de los phantoms.
-      // Usamos visibility:hidden con !important inline. A diferencia de opacity,
-      // visibility se hereda a los hijos y NO la sobrescribe el Flip.from con
-      // nested:true (que restaura opacity/scale de los hijos pero no visibility).
-      // Así evitamos que se vea el texto del modal "por debajo" del phantom.
-      // Lo restauramos en el cleanup cuando la animación termina.
-      content.style.setProperty("visibility", "hidden", "important");
+      // Ocultamos el contenido de la modal al inicio del cierre para que solo
+      // se vea el phantom volando de vuelta al trigger. Sin esto, el content
+      // (position:absolute con dimensiones fijas) se recorta por el
+      // overflow:hidden de la modal mientras se encoge con FLIP → el texto
+      // se ve "rodando" durante la animación.
+      gsap.set(content, { opacity: 0 });
 
       // Aqui capturamos los estilos actuales del modal abierto.
       const state = Flip.getState([modal, ...modalShared], {
@@ -773,15 +829,17 @@ export const useFlipModal = ({
           height: parseFloat(phantom.style.height),
         };
         const sourceRect = pair.source.getBoundingClientRect();
-        const toBR = getEffectiveBorderRadius(pair.source);
+        const toBR = radiusAsFourCorners(pair.source);
         const isImage = pair.source.tagName === "IMG";
-        const toFontSize = isImage ? null : window.getComputedStyle(pair.source).fontSize;
+        const toFontSize = isImage
+          ? null
+          : window.getComputedStyle(pair.source).fontSize;
 
         // Misma duración (0.25s) y misma curva (power3.inOut) que el FLIP
         // de cierre, así el deslizamiento de vuelta va al mismo ritmo que
         // el cierre del modal.
         animatePhantom(phantom, currentRect, sourceRect, fromBR, toBR, {
-          duration: 0.25,
+          duration: 0.35,
           ease: "power3.inOut",
           fromFontSize,
           toFontSize,
@@ -796,21 +854,89 @@ export const useFlipModal = ({
         modal.style.removeProperty("min-height");
         modal.style.removeProperty("min-width");
         gsap.set(modal, { willChange: "auto" });
-        gsap.set(element, {
-          opacity: 1,
-          clearProps: "opacity",
-        });
         // Restauramos la visibilidad del content que ocultamos durante el
         // viaje de los phantoms de cierre.
         content.style.removeProperty("visibility");
-        // Crossfade de salida para los phantoms de cierre
-        for (const { phantom } of closePhantoms) {
+        // Snap invisible: el phantom ya fue animado durante el
+        // cierre para coincidir con el shared element del trigger (misma
+        // posición, tamaño, borderRadius, fontSize). En lugar de hacer un
+        // crossfade (que se nota como un fade), hacemos un swap instantáneo:
+        // matamos el tween del phantom, revelamos el shared element del
+        // trigger y retiramos el phantom en el mismo frame. Como el phantom
+        // y el original son visualmente idénticos en ese punto, el swap es
+        // invisible — no se nota la transición.
+        for (const { phantom, pair } of closePhantoms) {
           gsap.killTweensOf(phantom);
+
+          // Snap-to-final: el phantom es un clon del TARGET (modal), así
+          // que tiene sus propiedades (fontVariationSettings, fontWeight,
+          // color, etc.). Aunque animamos fontSize y borderRadius, otras
+          // propiedades (opsz en iconos, color, boxShadow…) NO se animan
+          // y hacen que el glyph se renderice con métricas distintas al
+          // del source dentro del box → "se ve un salto" al hacer el swap.
+          // Forzamos TODAS las propiedades visuales del source al phantom
+          // para que el swap sea pixel-perfect e invisible.
+          const sourceStyles = window.getComputedStyle(pair.source);
+          const sourceRect = pair.source.getBoundingClientRect();
+          gsap.set(phantom, {
+            top: sourceRect.top,
+            left: sourceRect.left,
+            width: sourceRect.width,
+            height: sourceRect.height,
+            // Limpiamos transform + willChange para que el phantom salga
+            // de su capa GPU (creada por animatePhantom con force3D y
+            // willChange) y comparta el contexto de compositing del
+            // source. Si no, al retirar el phantom su capa desaparece
+            // y el source (sin willChange) se re-composita → flicker.
+            clearProps: "transform,x,y,xPercent,yPercent,willChange",
+            // Forzamos force3D:false para que gsap no re-promueva el
+            // phantom a una capa 3D al aplicar el set (haría que el
+            // phantom volviera a tener translateZ(0) y se creara una
+            // nueva capa GPU que no existe en el source).
+            force3D: false,
+            borderRadius: radiusAsFourCorners(pair.source),
+            fontSize: sourceStyles.fontSize,
+            fontVariationSettings: sourceStyles.fontVariationSettings,
+            fontWeight: sourceStyles.fontWeight,
+            fontFamily: sourceStyles.fontFamily,
+            letterSpacing: sourceStyles.letterSpacing,
+            textTransform: sourceStyles.textTransform,
+            color: sourceStyles.color,
+            backgroundColor: sourceStyles.backgroundColor,
+            backgroundImage: sourceStyles.backgroundImage,
+            boxShadow: sourceStyles.boxShadow,
+            filter: sourceStyles.filter,
+            opacity: sourceStyles.opacity,
+            overflow: sourceStyles.overflow,
+          });
+
+          // Swap estilo: el source se revela INSTANTÁNEAMENTE a opacity 1
+          // (con transition:none para que sea atómico), y lo que el usuario ve
+          // es el phantom DESVANEICIÉNDOSE lentamente para dejar ver el source
+          // que ya estaba ahí. El source no "aparece" — el phantom simplemente
+          // se va y revela lo que ya estaba debajo. Esto evita el brinco de
+          // paint que causaba el gsap.fromTo con fade-in: el source estaba
+          // al ~9% de opacity cuando retirábamos el phantom, y el usuario
+          // veía un salto de "phantom visible" a "source casi invisible".
+          // Con el source ya a opacity 1, solo se desvanece el phantom —
+          // un único cambio visual continuo.
+          const prevTransition = pair.source.style.transition;
+          pair.source.style.transition = "none";
+
+          pair.source.style.removeProperty("opacity");
+          gsap.set(pair.source, { opacity: 1, clearProps: "opacity" });
+
+          // Desvanecemos el phantom lentamente para que el source (ya a
+          // opacity 1) se vaya revelando de forma progresiva y nativa.
           gsap.to(phantom, {
             opacity: 0,
-            duration: 0.06,
+            duration: 0.18,
             ease: "power1.out",
             onComplete: () => phantom.remove(),
+          });
+
+          requestAnimationFrame(() => {
+            if (pair.source) pair.source.style.transition = prevTransition;
           });
         }
         onClose();
@@ -826,28 +952,20 @@ export const useFlipModal = ({
           overlay,
           {
             backgroundColor: "rgba(0,0,0,0)",
-            duration: 0.2,
+            duration: 0.28,
             ease: "power1.inOut",
           },
           0,
         );
       }
 
-      // El contenido se encoge y desvanece con un sutil empuje vertical
-      // para dar sensación de profundidad (estilo Apple)
-      tl.to(
-        content,
-        { scale: 0.92, opacity: 0, y: 8, duration: 0.1, ease: "power2.in" },
-        0,
-      );
-
       // Aqui animamos la modal desde su estado grande o abierto capturandolo con state
-      // hasta el estado del trigger. Usamos una curva S suave (power3.inOut) estilo Apple.
+      // hasta el estado del trigger. Usamos una curva S suave (power3.inOut) estilo.
       tl.add(
         Flip.from(state, {
           targets: [modal, ...modalShared],
           nested: true,
-          duration: 0.25,
+          duration: 0.35,
           ease: "power3.inOut",
           props: "backgroundColor,color,padding",
         }),
@@ -859,19 +977,16 @@ export const useFlipModal = ({
         modal,
         {
           borderRadius: triggerStyles.borderRadius,
-          duration: 0.21,
+          duration: 0.3,
           ease: "power2.inOut",
         },
-        0.025,
+        0.04,
       );
 
-      // Revelamos el trigger debajo del modal justo antes de que termine
-      tl.set(element, { opacity: 1 }, 0.2);
-
       // El modal hace fade out revelando el contenido del botón de forma natural
-      tl.to(modal, { opacity: 0, duration: 0.05, ease: "power1.inOut" }, 0.2);
+      tl.to(modal, { opacity: 0, duration: 0.07, ease: "power1.inOut" }, 0.28);
     },
-    [onClose, triggerRef, modalRef, contentRef, overlayRef, id],
+    [onClose, triggerRef, modalRef, contentRef, overlayRef, id, hideTrigger],
   );
 
   return { closeModal };

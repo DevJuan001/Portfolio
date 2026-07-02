@@ -23,7 +23,7 @@ export default function Header() {
         className={`my-4 flex gap-3 p-2
         ${
           scrolled
-            ? `border rounded-full border-gray-200 backdrop-blur-xs
+            ? `border rounded-full border-gray-100/80 backdrop-blur-sm
             dark:border-white/10 dark:shadow-[0px_0px_1.5px_0.1px_#000]`
             : "border-transparent"
         }`}

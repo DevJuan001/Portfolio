@@ -18,37 +18,22 @@ export default function ProjectItem({ project }) {
         e.stopPropagation();
         openModal(project, project.title, e.currentTarget);
       }}
-      className="flex flex-col gap-3 rounded-3xl p-3 transition-colors duration-200
+      className="flex flex-col gap-3 rounded-3xl p-2 transition-colors duration-200
       hover:bg-[#e5e7eb70] hover:cursor-pointer
       dark:bg-[#101012] dark:hover:bg-[#202022]"
     >
-      <div
-        className="relative h-44 rounded-2xl shadow-md overflow-hidden
+      <img
+        data-shared-id="project-main-image"
+        src={project.images[0]}
+        alt={project.alt}
+        className="h-44 w-full rounded-2xl 
         md:h-80"
-      >
-        <img
-          data-shared-id="project-main-image"
-          src={project.images[0]}
-          alt={project.alt}
-          className="h-full rounded-2xl"
-        />
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            openModal(project, project.title, e.currentTarget);
-          }}
-          className="absolute top-2 right-2 flex items-center p-2 backdrop-blur-md shadow-[0px_0px_5px_1px_#6a7282] rounded-3xl
-          md:backdrop-blur-xs  md:hover:backdrop-blur-sm"
-        >
-          <Icon name={"expand_content"} color={"#fff"} />
-        </button>
-      </div>
+      />
 
       <div className="flex flex-col gap-2">
         <h3
           data-shared-id="project-title"
-          className="text-2xl font-semibold 
+          className="text-2xl font-semibold
           dark:text-gray-100"
         >
           {project.title}
@@ -73,14 +58,29 @@ export default function ProjectItem({ project }) {
           {project.description}
         </p>
 
-        <div className="flex gap-4 mt-2">
+        <div className="flex gap-3 mt-2">
+          {project.link && (
+            <a
+              target="_blank"
+              data-shared-id="open-project-button"
+              href={project.link}
+              className="flex items-center gap-2 py-2 px-4 bg-black text-white border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
+              hover:bg-black/85 hover:cursor-pointer
+              dark:bg-white dark:text-black dark:border-[#3a3d43] dark:hover:bg-neutral-200"
+            >
+              <Icon name={"open_in_new"} size={16} />
+
+              <span>Abrir</span>
+            </a>
+          )}
+
           {project.github && (
             <a
               target="_blank"
               href={project.github}
               className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-                hover:bg-black hover:cursor-pointer hover:text-white
-                dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
+              hover:bg-black hover:cursor-pointer hover:text-white
+              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
             >
               <icons.githubLight
                 className="w-5 h-5 transition-all duration-200 
@@ -89,20 +89,6 @@ export default function ProjectItem({ project }) {
               />
 
               <span>Github</span>
-            </a>
-          )}
-
-          {project.link && (
-            <a
-              target="_blank"
-              href={project.link}
-              className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black hover:cursor-pointer hover:text-white
-              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
-            >
-              <Icon name={"open_in_new"} size={16} />
-
-              <span>Ver</span>
             </a>
           )}
         </div>

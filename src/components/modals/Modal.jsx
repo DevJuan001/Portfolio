@@ -69,34 +69,33 @@ export default function Modal({
         onClick={(e) => e.stopPropagation()}
         style={{
           visibility: "hidden",
-          maxHeight: "calc(100vh - 20px)",
-          overflowY: "auto",
+          maxHeight: "100vh",
         }}
         ref={modalRef}
-        className={`${modal_styles[type] ?? modal_styles.default} bg-[#fbf9fc] shadow-lg
+        className={`${modal_styles[type] ?? modal_styles.default} flex flex-col bg-[#fbf9fc] shadow-lg
         dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
       >
-        <div ref={contentRef}>
-          {type !== "theme" && (
-            <header className="flex justify-between items-center mb-2">
-              <span
-                data-shared-id="modal-title"
-                className="min-w-56 font-medium text-lg dark:text-[#e4e2e5]"
-              >
-                {title}
-              </span>
+        {type !== "theme" && (
+          <header className="flex justify-between items-center mb-2 shrink-0">
+            <span
+              data-shared-id="modal-title"
+              className="min-w-56 font-medium text-lg dark:text-[#e4e2e5]"
+            >
+              {title}
+            </span>
 
-              <button
-                onClick={closeModal}
-                className="w-10 h-10 p-2.5 self-end flex items-center justify-center rounded-full
-                hover:bg-[#49454f21] hover:cursor-pointer
-                dark:hover:bg-[#28282bbd]"
-              >
-                <Icon name={"close"} size={24} className="dark:invert" />
-              </button>
-            </header>
-          )}
+            <button
+              onClick={closeModal}
+              className="w-11 h-11 p-2.5 self-end flex items-center justify-center rounded-full
+              hover:bg-[#49454f21] hover:cursor-pointer
+              dark:hover:bg-[#28282bbd]"
+            >
+              <Icon name={"close"} size={24} className="dark:invert" />
+            </button>
+          </header>
+        )}
 
+        <div ref={contentRef} className="overflow-y-auto flex-1">
           {enhancedChildren}
         </div>
       </section>
