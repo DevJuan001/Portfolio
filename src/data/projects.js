@@ -1,7 +1,7 @@
 export const projects = [
   {
     title: "Tracklinker",
-    icon: "/public/projects/tracklinker-logo.svg",
+    icon: "projects/tracklinker-logo.svg",
     description: `Tracklinker es una aplicación web de gestión de inventarios que permite administrar productos, categorías, proveedores y órdenes de entrada/salida.
     Incluye autenticación con control de acceso por roles, visualización de estadísticas mediante gráficos interactivos y exportación de reportes en PDF y Excel.`,
     challenge: `Las tiendas y talleres que manejan productos con número de serie suelen depender de Excel, libretas y grupos de WhatsApp: las entradas, ventas y garantías se apuntan a mano, sin saber en tiempo real qué hay en bodega, qué se vendió o qué está en garantía.
@@ -64,7 +64,7 @@ export const projects = [
 
   {
     title: "Parking hackathon",
-    icon: "/public/projects/parking-logo.svg",
+    icon: "projects/parking-logo.svg",
     description: `Aplicación web para digitalizar la operación de un parqueadero,
       el cliente registra su placa al ingresar, la app le asigna una plaza y al salir calcula y cobra automáticamente según la tarifa del tipo de vehículo;
       el operador administra usuarios, plazas, pisos y tarifas desde un panel.`,
@@ -121,9 +121,9 @@ export const projects = [
     link: "https://tracklinker-frontend-web.vercel.app/",
     github: "https://github.com/DevJuan001/parking-hackathon",
     images: [
-      "/projects/parking-1.png",
-      "/projects/parking-2.png",
-      "/projects/parking-3.png",
+      "projects/parking-1.png",
+      "projects/parking-2.png",
+      "projects/parking-3.png",
     ],
     alt: "Proyecto parking",
     stack: ["Python", "FastAPI", "Redis", "React", "Tailwind", "Tanstack"],
