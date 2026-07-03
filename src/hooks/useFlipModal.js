@@ -275,6 +275,7 @@ export const useFlipModal = ({
       // (ej: rounded-[32px], rounded-none, etc.) ANTES de sobrescribirlo abajo.
       // Así respetamos el radio que cada tipo de modal configure.
       const finalBorderRadius = radiusAsFourCorners(modal);
+      const triggerBorderRadius = radiusAsFourCorners(element);
 
       // Anulamos min-height/min-width con !important para que GSAP pueda encoger
       // el modal hasta el tamaño del botón durante la animación FLIP.
@@ -500,7 +501,7 @@ export const useFlipModal = ({
           nested: true,
           duration: 0.6,
           ease: "expo.out",
-          props: "borderRadius,backgroundColor,color,padding",
+          props: "backgroundColor,color,padding",
           onComplete: () => {
             if (cancelled) return;
 
@@ -610,6 +611,19 @@ export const useFlipModal = ({
             });
           },
         }),
+      );
+
+      // Transición explícita del borderRadius desde el del trigger hasta el
+      // final de la modal. La sacamos de los props del FLIP para poder
+      // ajustarla independientemente y mantener consistencia con el cierre,
+      // que también la anima con un tween propio. Usamos sine.in para que
+      // el borde empiece a cambiar pronto en el vuelo y se asiente antes
+      // de terminar, sin el delay marcado de power2.in.
+      tl.fromTo(
+        modal,
+        { borderRadius: triggerBorderRadius },
+        { borderRadius: finalBorderRadius, duration: 0.6, ease: "sine.in" },
+        0,
       );
 
       // Oscurecemos el overlay de fondo en paralelo con la apertura del modal
