@@ -10,9 +10,14 @@ export default function Projects() {
 
   return (
     <section id="projects" className="mx-auto mt-20 mb-32 lg:max-w-6xl">
-      <h2 className="text-3xl font-bold dark:text-white">Proyectos</h2>
+      <h2
+        className="text-3xl font-bold
+        dark:text-white"
+      >
+        Proyectos
+      </h2>
 
-      <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="mt-10 flex flex-col gap-5">
         {extendedProjects.map((project) => (
           <ProjectItem key={project.title} project={project} />
         ))}

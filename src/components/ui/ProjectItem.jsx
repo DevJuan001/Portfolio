@@ -18,28 +18,32 @@ export default function ProjectItem({ project }) {
         e.stopPropagation();
         openModal(project, project.title, e.currentTarget);
       }}
-      className="flex flex-col gap-3 rounded-3xl p-2 transition-colors duration-200
-      hover:bg-[#e5e7eb70] hover:cursor-pointer
-      dark:bg-[#101012] dark:hover:bg-[#202022]"
+      className="flex flex-col items-center gap-3 p-2.5 rounded-4xl transition-colors duration-200
+      lg:flex-row
+      hover:bg-[#F5F3F6] hover:cursor-pointer
+      dark:hover:bg-[#101012]"
     >
       <img
         data-shared-id="project-main-image"
         src={project.images[0]}
         alt={project.alt}
-        className="h-44 w-full rounded-2xl 
-        md:h-80"
+        className="h-full w-full rounded-[22px]
+        lg:h-80"
       />
 
-      <div className="flex flex-col gap-2">
+      <div
+        className="flex flex-col gap-2 pl-3
+        lg:p-5"
+      >
         <h3
           data-shared-id="project-title"
-          className="text-2xl font-semibold
+          className="text-3xl font-semibold
           dark:text-gray-100"
         >
           {project.title}
         </h3>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {project.stack.map((technology) => (
             <div
               key={technology.name}
@@ -54,7 +58,10 @@ export default function ProjectItem({ project }) {
           ))}
         </div>
 
-        <p className="text-[#75777E] dark:text-[#7e8088]">
+        <p
+          className="text-[#75777E] 
+          dark:text-[#7e8088]"
+        >
           {project.description}
         </p>
 
