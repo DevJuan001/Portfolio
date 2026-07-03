@@ -10,8 +10,10 @@
   --font-sans: "Inter", sans-serif;
   --font-dmsans: "DM Sans", sans-serif;
   --font-poppins: "Poppins", sans-serif;
+  --font-geist: "Geist Mono", "Geist Mono Fallback";
 
-  --animate-carrousel-sections-in: carrousel-sections-in 1s ease-in-out 0.4s both;
+  --animate-carrousel-sections-in: carrousel-sections-in 1s ease-in-out 0.4s
+    both;
   --animate-slide-in-right: slide-in-right 1s ease-out both;
   --animate-slide-in-left: slide-in-left 1s ease-out both;
 
