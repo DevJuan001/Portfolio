@@ -18,7 +18,7 @@ export default function ProjectModal({ project }) {
       >
         {images.map((image, index) => (
           <img
-            data-shared-id={index === 0 ? "project-main-image" : ""}
+            {...(index === 0 && { "data-shared-id": "project-main-image" })}
             src={image}
             alt={project.alt}
             className={`w-auto h-full rounded-2xl object-cover
