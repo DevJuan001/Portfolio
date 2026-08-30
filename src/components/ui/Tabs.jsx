@@ -28,8 +28,9 @@ export default function Tabs({ tabs = [], activeTab = 0, onChange }) {
           aria-selected={activeTab === index}
           aria-controls={`tab-panel-${index}`}
           onClick={() => onChange(index)}
-          className={`relative grow basis-40 p-6 rounded-full font-medium font-dmsans transition-colors duration-300
+          className={`relative grow basis-40 p-3 rounded-full text-sm font-medium font-dmsans transition-colors duration-300
           hover:cursor-pointer
+          xl:text-base xl:p-6
           ${
             activeTab === index
               ? "dark:text-[#E4E2E5]"
