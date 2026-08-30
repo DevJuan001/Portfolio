@@ -1,12 +1,11 @@
 // Hooks
-import { useModal } from "../../hooks/useModal";
+import { useModal } from "@hooks/useModal";
 // Icons
-import { icons } from "../../assets/icons";
+import { icons } from "@assets/icons";
 // Componentes
-import Icon from "./Icon";
+import Icon from "@components/ui/Icon";
 // Modales
-import Modal from "../modals/Modal";
-import ProjectModal from "../modals/ProjectModal";
+import ProjectModal from "@modals/ProjectModal";
 
 export default function ProjectItem({ project }) {
   const { modalType, modalData, isOpen, triggerRef, openModal, closeModal } =
@@ -18,7 +17,7 @@ export default function ProjectItem({ project }) {
         e.stopPropagation();
         openModal(project, project.title, e.currentTarget);
       }}
-      className="flex flex-col items-center gap-3 p-2.5 rounded-4xl transition-colors duration-200
+      className="flex flex-col items-center gap-3 p-2.5 rounded-4xl transition-colors
       lg:flex-row
       hover:bg-[#F5F3F6] hover:cursor-pointer
       dark:hover:bg-[#101012]"
@@ -101,17 +100,13 @@ export default function ProjectItem({ project }) {
         </div>
       </div>
 
-      {modalType && (
-        <Modal
+      {modalType === project.title && (
+        <ProjectModal
           isOpen={isOpen}
-          type="project"
-          margin={0}
-          location="center"
+          project={modalData}
           triggerRef={triggerRef}
           onClose={closeModal}
-        >
-          {modalType === project.title && <ProjectModal project={modalData} />}
-        </Modal>
+        />
       )}
     </div>
   );
