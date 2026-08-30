@@ -801,6 +801,15 @@ export const useFlipModal = ({
           willChange: "auto",
           clearProps: "backgroundColor,color,padding",
         });
+
+        // Con la apertura ya asentada, el drag no tiene nada que terminar.
+        // Dejar el ref vivo hacía que el PRIMER drag reaplicara todo este
+        // finalize sobre una modal ya abierta y scrolleada: el progress(1)
+        // del timeline y los clearProps de width/height reflowean el
+        // scroller, y el navegador le recorta el scrollTop al usuario. Del
+        // segundo drag en adelante el ref ya estaba consumido y el scroll
+        // se respetaba — de ahí que el salto se viera una sola vez.
+        settleOpenRef.current = null;
       };
 
       const tl = gsap.timeline();
