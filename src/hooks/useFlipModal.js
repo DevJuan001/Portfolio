@@ -517,7 +517,8 @@ export const useFlipModal = ({
       // Limpiamos los estilos inline del contenido interior para que Flip pueda
       // calcular correctamente su posición y tamaño sin interferencias de runs anteriores.
       gsap.set(content, {
-        clearProps: "position,top,left,width,height,boxSizing",
+        clearProps:
+          "position,top,left,width,height,boxSizing,overflow,flexGrow,flexShrink,flexBasis",
       });
 
       // Fijamos el content a su ancho final ANTES de que el FLIP anime el
@@ -971,6 +972,46 @@ export const useFlipModal = ({
       const modalCurrentRect = modal.getBoundingClientRect();
       gsap.set(modal, { height: modalCurrentRect.height });
 
+      // Convertimos el scroll en un transform ANTES de que el FLIP encoja
+      // la modal, y dejamos el scroller en cero.
+      //
+      // scrollTop no es un valor nuestro: el navegador lo recorta solo a
+      // [0, scrollHeight - clientHeight] cada vez que recalcula la
+      // geometría del scroller. Y durante el cierre esa geometría cambia
+      // en cada frame — la modal colapsa al tamaño del trigger, el content
+      // se va con ella y el FLIP anima width/height. Alcanza UN frame en
+      // el que el recorte se aplique para que el scroll se pierda, y eso
+      // es lo que se ve como "la modal me devuelve al tope antes de
+      // cerrarse". Congelar la caja y reasignar scrollTop no lo evita:
+      // solo achica la ventana en la que puede pasar.
+      //
+      // Un transform, en cambio, no participa del layout ni de la
+      // geometría de scroll, así que no hay nada que el navegador pueda
+      // recortar. Trasladamos los hijos hacia arriba exactamente lo que el
+      // usuario había scrolleado: el resultado visual es idéntico al del
+      // scroll, pero inmutable durante todo el cierre.
+      const scrolledBy = content.scrollTop;
+      const scrolledChildren = Array.from(content.children);
+      const contentRect = content.getBoundingClientRect();
+
+      // La caja del content igual se congela y sale del reparto flex
+      // (`flex-1` es `flex: 1 1 0%`, y en el eje principal flex-basis le
+      // gana a height). Sin esto el content se encoge junto con la modal
+      // y el contenido se re-fluye al ancho de un botón durante el vuelo.
+      gsap.set(content, {
+        flexGrow: 0,
+        flexShrink: 0,
+        flexBasis: "auto",
+        width: contentRect.width,
+        height: contentRect.height,
+        overflow: "hidden",
+      });
+
+      if (scrolledBy > 0) {
+        gsap.set(scrolledChildren, { y: -scrolledBy });
+        content.scrollTop = 0;
+      }
+
       // Ocultamos overflow para que el contenido del modal no se desborde al encoger
       gsap.set(modal, { overflow: "hidden" });
 
@@ -1002,6 +1043,20 @@ export const useFlipModal = ({
         pair.target.style.removeProperty("opacity");
 
         const targetRect = pair.target.getBoundingClientRect();
+
+        // Si el usuario scrolleó y el shared element quedó fuera de la
+        // pantalla, no hay nada que hacer volar. El phantom nacería en una
+        // posición que nadie está mirando y entraría barriendo desde el
+        // borde — que es justo lo que se lee como "la modal me devolvió al
+        // tope". Dejamos ese par afuera del cierre: el target queda visible
+        // dentro de la modal que se encoge y el trigger conserva su
+        // contenido, porque no va a llegarle ningún phantom.
+        const isOnScreen =
+          targetRect.bottom > 0 &&
+          targetRect.right > 0 &&
+          targetRect.top < window.innerHeight &&
+          targetRect.left < window.innerWidth;
+        if (!isOnScreen) continue;
 
         // Creamos el phantom posicionado sobre el elemento en la modal, con la
         // forma (borderRadius) visible del target. Pasamos el source (que es
@@ -1177,6 +1232,15 @@ export const useFlipModal = ({
         // el viaje de los phantoms de cierre. Reusamos la misma lista
         // (fadeTargets) que animamos para no volver a hacer un walk de "*".
         content.style.removeProperty("visibility");
+        // Deshacemos la conversión scroll -> transform y la caja congelada.
+        // El nodo del modal sobrevive al cierre (siempre se rendera por el
+        // portal, solo se oculta), así que si dejáramos estos inline la
+        // próxima apertura arrancaría con el content desplazado y fuera
+        // del reparto flex.
+        gsap.set(scrolledChildren, { clearProps: "transform,x,y" });
+        gsap.set(content, {
+          clearProps: "flexGrow,flexShrink,flexBasis,width,height,overflow",
+        });
         for (const el of fadeTargets) {
           gsap.set(el, {
             clearProps: "opacity,transform,scale,willChange",
