@@ -16,6 +16,7 @@
     both;
   --animate-slide-in-right: slide-in-right 1s ease-out both;
   --animate-slide-in-left: slide-in-left 1s ease-out both;
+  --animate-click-effect: clickEffect 0.5s cubic-bezier(0.37, 1.42, 0.37, 1);
 
   @keyframes carrousel-sections-in {
     0% {
@@ -32,6 +33,20 @@
     100% {
       transform: translateY(0px);
       width: 88px;
+    }
+  }
+
+  @keyframes clickEffect {
+    0% {
+      transform: scaleX(1) scaleY(1);
+    }
+
+    50% {
+      transform: scaleX(0.95) scaleY(0.9);
+    }
+
+    100% {
+      transform: scaleX(1);
     }
   }
 
