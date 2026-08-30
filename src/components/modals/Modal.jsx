@@ -18,7 +18,7 @@ export default function Modal({
   children,
   onClose,
   disableClose = false,
-  disableHeader,
+  disableHeader = false,
   dragToClose = false,
   responsive = false,
 }) {
