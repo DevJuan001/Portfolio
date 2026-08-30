@@ -1,103 +1,80 @@
 // Hooks
 import { useModal } from "@hooks/useModal";
-// Icons
-import { icons } from "@assets/icons";
+// Data
+import { technologies } from "@data/technologies";
 // Componentes
 import Icon from "@components/ui/Icon";
 // Modales
 import ProjectModal from "@modals/ProjectModal";
 
-export default function ProjectItem({ project }) {
+export default function ProjectItem({ project, reversed = false }) {
   const { modalType, modalData, isOpen, triggerRef, openModal, closeModal } =
     useModal();
 
   return (
     <div
-      onClick={(e) => {
-        e.stopPropagation();
-        openModal(project, project.title, e.currentTarget);
-      }}
-      className="flex flex-col items-center gap-3 p-2.5 rounded-4xl transition-colors
-      lg:flex-row
+      onClick={(e) => openModal(project, project.title, e.currentTarget)}
+      className={`relative w-full flex flex-col items-center gap-3 p-2.5 rounded-4xl transition-colors duration-200 group
+      ${reversed ? "lg:flex-row-reverse" : "lg:flex-row"}
       hover:bg-[#F5F3F6] hover:cursor-pointer
-      dark:hover:bg-[#101012]"
+      focus-within:shadow-[0_0_3px_2px_#e5e7eb]
+      dark:hover:bg-[#101012] dark:focus-within:shadow-[0_0_3px_3px_#28282b]`}
     >
       <img
         data-shared-id="project-main-image"
         src={project.images[0]}
         alt={project.alt}
-        className="h-full w-full rounded-[22px]
-        lg:h-80"
+        width={1919}
+        height={1078}
+        className="w-full rounded-[22px] object-cover
+        lg:w-1/2 lg:h-80"
       />
 
       <div
-        className="flex flex-col gap-2 pl-3
-        lg:p-5"
+        className="w-full flex flex-col gap-2 pl-3
+        lg:w-1/2 lg:p-5"
       >
-        <h3
-          data-shared-id="project-title"
-          className="text-3xl font-semibold
-          dark:text-gray-100"
-        >
-          {project.title}
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3
+            data-shared-id="project-title"
+            className="text-4xl font-dmsans font-semibold
+            dark:text-[#E4E2E5]"
+          >
+            {project.title}
+          </h3>
+
+          <Icon
+            name="arrow_outward"
+            size={22}
+            className="shrink-0 text-[#75777E] transition-transform duration-200
+            group-hover:translate-x-0.5 group-hover:-translate-y-0.5
+            dark:text-[#7E8088]"
+          />
+        </div>
 
         <div className="flex flex-wrap gap-1.5">
-          {project.stack.map((technology) => (
-            <div
-              key={technology.name}
-              className={`flex items-center gap-1 py-1 px-2.5 rounded-full 
-                ${technology.styles}
-              `}
-            >
-              <technology.icon className="w-3.5 h-3.5" />
+          {project.stack.map((name) => {
+            const technology = technologies[name];
 
-              <span className="text-xs font-medium">{technology.name}</span>
-            </div>
-          ))}
+            return (
+              <div
+                key={name}
+                className={`flex items-center gap-1 py-1 px-2.5 rounded-full ${technology.styles}`}
+              >
+                <technology.icon className="w-3.5 h-3.5" />
+
+                <span className="text-xs font-medium">{technology.name}</span>
+              </div>
+            );
+          })}
         </div>
 
         <p
-          className="text-[#75777E] 
-          dark:text-[#7e8088]"
+          className="text-[#75777E]
+          dark:text-[#7E8088]"
         >
           {project.description}
         </p>
-
-        <div className="flex gap-3 mt-2">
-          {project.link && (
-            <a
-              target="_blank"
-              data-shared-id="open-project-button"
-              href={project.link}
-              className="flex items-center gap-2 py-2 px-4 bg-black text-white border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black/85 hover:cursor-pointer
-              dark:bg-white dark:text-black dark:border-[#3a3d43] dark:hover:bg-neutral-200"
-            >
-              <Icon name={"open_in_new"} size={16} />
-
-              <span>Abrir</span>
-            </a>
-          )}
-
-          {project.github && (
-            <a
-              target="_blank"
-              href={project.github}
-              className="flex items-center gap-2 py-2 px-4 border border-[#c5c6ce] rounded-3xl transition-colors duration-200 group
-              hover:bg-black hover:cursor-pointer hover:text-white
-              dark:text-white dark:border-[#3a3d43] dark:hover:bg-white dark:hover:text-black"
-            >
-              <icons.githubLight
-                className="w-5 h-5 transition-all duration-200 
-                dark:invert dark:group-hover:invert-0
-                group-hover:invert"
-              />
-
-              <span>Github</span>
-            </a>
-          )}
-        </div>
       </div>
 
       {modalType === project.title && (
