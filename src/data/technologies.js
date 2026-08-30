@@ -1,39 +1,10 @@
-import { icons } from "../assets/icons";
+import { icons } from "@assets/icons";
 
 export const technologies = {
-  Python: {
-    name: "Python",
-    styles: "bg-blue-950 text-white",
-    icon: icons.python,
-  },
-
-  FastAPI: {
-    name: "FastAPI",
-    styles: "bg-black text-white",
-    icon: icons.fastapi,
-  },
-
-  Redis: {
-    name: "Redis",
-    styles: "bg-red-700 text-white",
-    icon: icons.redis,
-  },
-
-  React: {
-    name: "React",
-    styles: "bg-blue-950 text-white",
-    icon: icons.react,
-  },
-
-  Tailwind: {
-    name: "Tailwind",
-    styles: "bg-blue-950 text-white",
-    icon: icons.tailwind,
-  },
-
-  Tanstack: {
-    name: "Tanstack",
-    styles: "bg-black text-white",
-    icon: icons.tanstack,
-  },
+  Python: icons.python,
+  FastAPI: icons.fastapi,
+  Redis: icons.redis,
+  React: icons.react,
+  Tailwind: icons.tailwind,
+  Tanstack: icons.tanstack,
 };
