@@ -20,12 +20,12 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
       isOpen={isOpen}
       onClose={onClose}
       triggerRef={triggerRef}
-      styles="w-screen h-screen flex flex-col items-center p-7 font-sans"
+      styles="w-screen h-screen flex flex-col p-7 font-sans"
     >
       <div
-        className="w-full flex flex-col items-center justify-center mt-2 gap-12
+        className="w-full justify-self-center flex flex-col items-center justify-center mt-2 gap-12
         xl:w-300
-        dark:text-white"
+        dark:text-[#E4E2E5]"
       >
         <div className="w-full flex flex-wrap items-start gap-3">
           {project.images.map((image, index) => (
@@ -59,8 +59,7 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
 
               <h2
                 data-shared-id="project-title"
-                className="text-4xl font-semibold font-dmsans
-                dark:text-gray-100"
+                className="text-4xl font-semibold font-dmsans"
               >
                 {project.title}
               </h2>
@@ -94,7 +93,6 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
                 <a
                   target="_blank"
                   rel="noreferrer"
-                  data-shared-id="open-project-button"
                   href={project.link}
                   className="flex items-center justify-center gap-2 py-2 px-4 bg-black text-white border border-[#c5c6ce] rounded-3xl transition-colors duration-200
                   active:animate-click-effect
@@ -138,7 +136,9 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
               {project.objectiveModules && (
                 <div className="w-full flex flex-col gap-5">
                   <Tabs
-                    tabs={project.objectiveModules.map((module) => module.title)}
+                    tabs={project.objectiveModules.map(
+                      (module) => module.title,
+                    )}
                     activeTab={activeModule}
                     onChange={setActiveModule}
                   />
@@ -149,21 +149,23 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
                     aria-labelledby={`tab-${activeModule}`}
                     className="flex flex-col gap-1.5"
                   >
-                    {project.objectiveModules[activeModule].items.map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-start gap-1.5 text-[#75777E]
+                    {project.objectiveModules[activeModule].items.map(
+                      (item) => (
+                        <li
+                          key={item}
+                          className="flex items-start gap-1.5 text-[#75777E]
                         dark:text-[#7E8088]"
-                      >
-                        <Icon
-                          name={"check_small"}
-                          size={18}
-                          className="shrink-0 mt-0.5"
-                        />
+                        >
+                          <Icon
+                            name={"check_small"}
+                            size={18}
+                            className="shrink-0 mt-0.5"
+                          />
 
-                        <span>{item}</span>
-                      </li>
-                    ))}
+                          <span>{item}</span>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               )}
