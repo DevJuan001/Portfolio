@@ -135,7 +135,6 @@ export const projects = [
       "/projects/tracklinker-2.png",
       "/projects/tracklinker-3.png",
     ],
-    link: "https://tracklinker-frontend-web.vercel.app/",
     github: "https://github.com/DevJuan001/Tracklinker-frontend-web",
     alt: "Proyecto tracklinker",
     stack: ["Python", "FastAPI", "Redis", "React", "Tailwind", "Tanstack"],
