@@ -308,6 +308,124 @@ function animatePhantom(
   return tl;
 }
 
+/**
+ * Calcula la esquina superior-izquierda que debe ocupar el modal, en coordenadas
+ * de viewport. Vive fuera del hook y sin efectos porque se llama en DOS momentos:
+ * al abrir y en cada resize de la ventana. Antes esta lógica estaba embebida en
+ * el effect de apertura, así que la posición se calculaba UNA sola vez y el modal
+ * quedaba clavado en píxeles para siempre.
+ *
+ * triggerRect puede ser null: en ese caso los modos que dependen del trigger
+ * (anchored) caen a centrado.
+ */
+function computeModalPosition({
+  location,
+  growDirection,
+  margin,
+  fullWidth,
+  fullHeight,
+  triggerRect,
+}) {
+  // Cálculo de posición final del modal
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  let finalLeft;
+  let finalTop;
+
+  // Este switch lo usamos para darle una posicion personalizable a la modal.
+  // La mayoría de los casos usarán "anchored" (posición relativa al trigger),
+  // pero se puede forzar a esquinas o al centro con location="center".
+  switch (location) {
+    case "top":
+      finalLeft = Math.round((vw - fullWidth) / 2);
+      finalTop = margin;
+      break;
+    case "bottom":
+      finalLeft = Math.round((vw - fullWidth) / 2);
+      finalTop = vh - fullHeight - margin;
+      break;
+    case "left":
+      finalLeft = margin;
+      finalTop = Math.round((vh - fullHeight) / 2);
+      break;
+    case "right":
+      finalLeft = vw - fullWidth - margin;
+      finalTop = Math.round((vh - fullHeight) / 2);
+      break;
+    case "top-left":
+      finalLeft = margin;
+      finalTop = margin;
+      break;
+    case "top-right":
+      finalLeft = vw - fullWidth - margin;
+      finalTop = margin;
+      break;
+    case "bottom-left":
+      finalLeft = margin;
+      finalTop = vh - fullHeight - margin;
+      break;
+    case "bottom-right":
+      finalLeft = vw - fullWidth - margin;
+      finalTop = vh - fullHeight - margin;
+      break;
+    case "center":
+      finalLeft = Math.round((vw - fullWidth) / 2);
+      finalTop = Math.round((vh - fullHeight) / 2);
+      break;
+    case "anchored":
+    default:
+      if (triggerRect) {
+        const r = triggerRect;
+
+        // Lógica de alineación basada en growDirection, osea como hacia donde va a
+        // crecer o salir la modal relativa al borde del trigger.
+        if (growDirection === "center") {
+          // El modal se centra exactamente sobre el trigger
+          finalLeft = r.left + (r.width - fullWidth) / 2;
+          finalTop = r.top + (r.height - fullHeight) / 2;
+        } else {
+          // Alineación horizontal: izquierda, derecha o centrado
+          if (growDirection.includes("right")) {
+            finalLeft = r.left; // Modal alineado al borde izquierdo del trigger
+          } else if (growDirection.includes("left")) {
+            finalLeft = r.right - fullWidth; // Modal alineado al borde derecho
+          } else {
+            finalLeft = r.left + (r.width - fullWidth) / 2; // Centrado horizontal
+          }
+
+          // Alineación vertical: arriba, abajo o centrado
+          if (growDirection.includes("bottom")) {
+            finalTop = r.top; // El modal crece hacia abajo desde el top del trigger
+          } else if (growDirection.includes("top")) {
+            finalTop = r.bottom - fullHeight; // El modal crece hacia arriba
+          } else {
+            finalTop = r.top + (r.height - fullHeight) / 2; // Centrado vertical
+          }
+        }
+
+        // Clamping para asegurar que no se salga de la pantalla (usando el margen).
+        // Math.max garantiza que no se pase a la izquierda/arriba,
+        // Math.min garantiza que no se pase a la derecha/abajo.
+        finalLeft = Math.max(
+          margin,
+          Math.min(finalLeft, vw - fullWidth - margin),
+        );
+        finalTop = Math.max(
+          margin,
+          Math.min(finalTop, vh - fullHeight - margin),
+        );
+      } else {
+        // Fallback a center si no hay rect disponible
+        finalLeft = Math.round((vw - fullWidth) / 2);
+        finalTop = Math.round((vh - fullHeight) / 2);
+      }
+      break;
+  }
+
+  return { left: finalLeft, top: finalTop };
+}
+
 export const useFlipModal = ({
   isOpen,
   modalRef,
@@ -323,6 +441,16 @@ export const useFlipModal = ({
   // Opt-in: por default no aplicamos drag para no cambiar el comportamiento
   // de modales existentes. Los modales que lo quieran pasan dragToClose={true}.
   dragToClose = false,
+  // Opt-in: si es true el modal devuelve su tamano al CSS al terminar de
+  // abrir y recalcula su posicion en cada resize de la ventana. Si es false
+  // (default) queda clavado en la geometria que midio al abrir, que es mas
+  // barato: cero listeners y cero lecturas de layout mientras esta abierto.
+  //
+  // Se controla con UN solo flag porque las dos mitades no sirven por
+  // separado: liberar el tamano sin reposicionar deja el modal creciendo
+  // desde un top/left viejo, y reposicionar sin liberar el tamano calcula
+  // la posicion con medidas que ya no son las reales.
+  responsive = false,
 }) => {
   // Puente entre la animación de apertura y el drag-to-close: mientras la
   // apertura está en vuelo, acá vive una función que la termina de golpe.
@@ -438,102 +566,17 @@ export const useFlipModal = ({
         element.style.setProperty("opacity", "0", "important");
       }
 
-      // Cálculo de posición final del modal
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-
-      let finalLeft;
-      let finalTop;
-
-      // Este switch lo usamos para darle una posicion personalizable a la modal.
-      // La mayoría de los casos usarán "anchored" (posición relativa al trigger),
-      // pero se puede forzar a esquinas o al centro con location="center".
-      switch (location) {
-        case "top":
-          finalLeft = Math.round((vw - fullWidth) / 2);
-          finalTop = margin;
-          break;
-        case "bottom":
-          finalLeft = Math.round((vw - fullWidth) / 2);
-          finalTop = vh - fullHeight - margin;
-          break;
-        case "left":
-          finalLeft = margin;
-          finalTop = Math.round((vh - fullHeight) / 2);
-          break;
-        case "right":
-          finalLeft = vw - fullWidth - margin;
-          finalTop = Math.round((vh - fullHeight) / 2);
-          break;
-        case "top-left":
-          finalLeft = margin;
-          finalTop = margin;
-          break;
-        case "top-right":
-          finalLeft = vw - fullWidth - margin;
-          finalTop = margin;
-          break;
-        case "bottom-left":
-          finalLeft = margin;
-          finalTop = vh - fullHeight - margin;
-          break;
-        case "bottom-right":
-          finalLeft = vw - fullWidth - margin;
-          finalTop = vh - fullHeight - margin;
-          break;
-        case "center":
-          finalLeft = Math.round((vw - fullWidth) / 2);
-          finalTop = Math.round((vh - fullHeight) / 2);
-          break;
-        case "anchored":
-        default:
-          if (triggerRef?.rect || rect) {
-            const r = triggerRef.rect || rect;
-
-            // Lógica de alineación basada en growDirection, osea como hacia donde va a
-            // crecer o salir la modal relativa al borde del trigger.
-            if (growDirection === "center") {
-              // El modal se centra exactamente sobre el trigger
-              finalLeft = r.left + (r.width - fullWidth) / 2;
-              finalTop = r.top + (r.height - fullHeight) / 2;
-            } else {
-              // Alineación horizontal: izquierda, derecha o centrado
-              if (growDirection.includes("right")) {
-                finalLeft = r.left; // Modal alineado al borde izquierdo del trigger
-              } else if (growDirection.includes("left")) {
-                finalLeft = r.right - fullWidth; // Modal alineado al borde derecho
-              } else {
-                finalLeft = r.left + (r.width - fullWidth) / 2; // Centrado horizontal
-              }
-
-              // Alineación vertical: arriba, abajo o centrado
-              if (growDirection.includes("bottom")) {
-                finalTop = r.top; // El modal crece hacia abajo desde el top del trigger
-              } else if (growDirection.includes("top")) {
-                finalTop = r.bottom - fullHeight; // El modal crece hacia arriba
-              } else {
-                finalTop = r.top + (r.height - fullHeight) / 2; // Centrado vertical
-              }
-            }
-
-            // Clamping para asegurar que no se salga de la pantalla (usando el margen).
-            // Math.max garantiza que no se pase a la izquierda/arriba,
-            // Math.min garantiza que no se pase a la derecha/abajo.
-            finalLeft = Math.max(
-              margin,
-              Math.min(finalLeft, vw - fullWidth - margin),
-            );
-            finalTop = Math.max(
-              margin,
-              Math.min(finalTop, vh - fullHeight - margin),
-            );
-          } else {
-            // Fallback a center si no hay rect disponible
-            finalLeft = Math.round((vw - fullWidth) / 2);
-            finalTop = Math.round((vh - fullHeight) / 2);
-          }
-          break;
-      }
+      // Posición final del modal. Se recalcula igual en cada resize (ver el
+      // effect de reposicionamiento más abajo), por eso vive en una función
+      // aparte en vez de estar escrita acá adentro.
+      const { left: finalLeft, top: finalTop } = computeModalPosition({
+        location,
+        growDirection,
+        margin,
+        fullWidth,
+        fullHeight,
+        triggerRect: triggerRef?.rect || rect,
+      });
 
       // Colocamos la modal en su posición y tamaño finales.
       // Fijamos position:fixed para sacarlo del flujo normal y posicionarlo con coordenadas de viewport absolutas.
@@ -735,6 +778,24 @@ export const useFlipModal = ({
 
         gsap.set(content, { overflowY: "auto" });
 
+        // Devolvemos el tamaño al CSS, pero SOLO si el modal pidió ser
+        // responsive. Durante el FLIP el modal necesita width/height en
+        // píxeles (es lo que se anima); si se los dejamos puestos queda
+        // clavado en el tamaño que tenía la ventana al abrir, las media
+        // queries de Tailwind dejan de tener efecto y un resize no cambia
+        // nada. Al limpiarlos vuelve a medir lo que digan sus clases
+        // (w-screen, w-100/md:w-125…) y se adapta solo.
+        //
+        // El mismo criterio para el width fijo del content, que existe para
+        // que el texto no se re-wrapee frame a frame durante la apertura.
+        //
+        // Cuando responsive es false dejamos todo pinneado a propósito: es
+        // el camino barato, sin listeners ni relayouts mientras esté abierto.
+        if (responsive) {
+          gsap.set(content, { clearProps: "width" });
+          gsap.set(modal, { clearProps: "width,height" });
+        }
+
         gsap.set(modal, {
           willChange: "auto",
           clearProps: "backgroundColor,color,padding",
@@ -855,6 +916,7 @@ export const useFlipModal = ({
     growDirection,
     margin,
     hideTrigger,
+    responsive,
   ]);
 
   // ANIMACIÓN DE CIERRE
@@ -1317,6 +1379,76 @@ export const useFlipModal = ({
       }
     };
   }, [isOpen, closeModal, modalRef]);
+
+  // ─── REPOSICIONAMIENTO EN RESIZE ──────────────────────────────────
+  //
+  // El modal se posiciona con position:fixed + top/left en píxeles, que es
+  // lo que necesita el FLIP para animar desde el rect del trigger. El
+  // problema es que esos píxeles se calculan UNA vez, al abrir: si después
+  // cambia el tamaño de la ventana, el modal se queda donde estaba y el
+  // clamping contra los bordes deja de valer (puede terminar cortado o
+  // fuera de pantalla).
+  //
+  // Acá recalculamos la posición con la misma función que usa la apertura.
+  // El tamaño NO se recalcula a mano: finalizeOpen limpia width/height para
+  // que lo maneje el CSS, así que basta con leer cuánto mide ahora.
+  //
+  // Nos colgamos de requestAnimationFrame en vez de escuchar resize a pelo
+  // porque el evento se dispara decenas de veces mientras se arrastra el
+  // borde de la ventana, y cada pasada hace lectura de layout. Con el rAF
+  // colapsamos todas las que caen en el mismo frame en una sola.
+  useEffect(() => {
+    // Opt-in: sin responsive no montamos el listener. Un modal no-responsive
+    // no paga NADA por esta feature — ni el handler ni las lecturas de layout.
+    if (!responsive) return;
+    if (!isOpen) return;
+    const modal = modalRef.current;
+    if (!modal) return;
+
+    let raf = null;
+
+    const reposition = () => {
+      raf = null;
+      // Si la apertura todavía está en vuelo, no tocamos nada: el FLIP está
+      // animando top/left en este preciso instante y pisarlo produce un
+      // salto. Al terminar, el modal ya queda con la geometría correcta.
+      if (settleOpenRef.current) return;
+
+      const element = triggerRef?.element || triggerRef?.current;
+      const { left, top } = computeModalPosition({
+        location,
+        growDirection,
+        margin,
+        fullWidth: modal.offsetWidth,
+        fullHeight: modal.offsetHeight,
+        // Releemos el rect del trigger en vivo: sigue en el DOM (solo está
+        // en opacity 0) y su posición también cambió con el resize. Usar el
+        // rect cacheado del open volvería a anclar el modal a un lugar viejo.
+        triggerRect: element ? element.getBoundingClientRect() : null,
+      });
+
+      gsap.set(modal, { top, left });
+    };
+
+    const onResize = () => {
+      if (raf !== null) return;
+      raf = requestAnimationFrame(reposition);
+    };
+
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (raf !== null) cancelAnimationFrame(raf);
+    };
+  }, [
+    responsive,
+    isOpen,
+    modalRef,
+    triggerRef,
+    location,
+    growDirection,
+    margin,
+  ]);
 
   // El drag-para-cerrar vive en su propio hook. Le pasamos closeModal
   // como handler: cuando el usuario supera el umbral de distancia o
