@@ -1,6 +1,6 @@
-import { useTheme } from "./hooks/useTheme";
-import Header from "./components/ui/Header";
-import SectionsContainer from "./components/ui/SectionsContainer";
+import { useTheme } from "@hooks/useTheme";
+import Header from "@components/ui/Header";
+import SectionsContainer from "@components/ui/SectionsContainer";
 
 function App() {
   useTheme();
