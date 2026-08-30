@@ -1,0 +1,15 @@
+/* Light mode */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #FBF9FC inset !important;
+  -webkit-text-fill-color: inherit !important;
+  border-radius: 0px !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Dark mode */
+.dark input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #000000 inset !important;
+  -webkit-text-fill-color: #E4E2E5 !important;
+  border-radius: 0px !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
