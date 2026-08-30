@@ -1,12 +1,14 @@
 export const headerSections = [
   {
+    title: "Sobre mí",
+    url: "/#",
+  },
+
+  {
     title: "Proyectos",
     url: "/#projects",
   },
-  {
-    title: "Sobre mí",
-    url: "/#sobre-mí",
-  },
+
   {
     title: "Contacto",
     url: "/#contact",
