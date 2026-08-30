@@ -30,8 +30,8 @@ export default function Navbar() {
         <a
           key={section.title}
           href={section.url}
-          className="py-2 px-4 rounded-3xl text-sm text-[#75777E] font-semibold transition-[background-color,padding] duration-300
-          hover:bg-gray-200 hover:text-[#1b1b1e] hover:px-5
+          className="py-2 px-3.5 rounded-3xl text-sm text-[#75777E] font-semibold transition-[background-color,padding] duration-300
+          hover:bg-gray-200 hover:text-[#1b1b1e] hover:px-6
           dark:text-[#d1d5db] dark:hover:text-white dark:hover:bg-[#28282b]"
         >
           <span>{section.title}</span>
