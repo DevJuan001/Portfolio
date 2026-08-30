@@ -1,12 +1,14 @@
-import Icon from "../ui/Icon";
+// Hooks
 import { createPortal } from "react-dom";
 import React, { useRef, useId } from "react";
-import { useFlipModal } from "../../hooks/useFlipModal";
-import { modal_styles } from "../../data/modalStyles";
+import { useFlipModal } from "@hooks/useFlipModal";
+// Componentes
+import Icon from "@components/ui/Icon";
+import LiquidGlass from "@components/ui/LiquidGlass";
 
 export default function Modal({
   isOpen,
-  type,
+  styles,
   triggerRef,
   z_index = "50",
   location = "anchored",
@@ -16,6 +18,9 @@ export default function Modal({
   children,
   onClose,
   disableClose = false,
+  disableHeader = false,
+  dragToClose = false,
+  responsive = false,
 }) {
   const modalRef = useRef();
   const contentRef = useRef();
@@ -24,13 +29,16 @@ export default function Modal({
   const id = useId();
   const modalId = id.replace(/:/g, "");
 
-  if (type === "user" || type === "help") {
-    location = "center";
-  }
-
-  if (type === "filter") {
-    growDirection = "bottom-center";
-  }
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "clip";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   const { closeModal } = useFlipModal({
     isOpen,
@@ -39,10 +47,12 @@ export default function Modal({
     triggerRef,
     overlayRef,
     onClose,
-    location,
-    growDirection,
+    location: location,
+    growDirection: growDirection,
     margin,
     id: modalId,
+    dragToClose,
+    responsive,
   });
 
   const enhancedChildren = React.Children.map(children, (child) => {
@@ -72,27 +82,36 @@ export default function Modal({
           maxHeight: "100vh",
         }}
         ref={modalRef}
-        className={`${modal_styles[type] ?? modal_styles.default} flex flex-col bg-[#fbf9fc] shadow-lg
-        dark:border-4 dark:bg-black dark:border-[#1e1e209f]`}
+        className={`flex flex-col bg-[#fbf9fc] shadow-lg ${
+          styles ??
+          `p-7 w-100 rounded-4xl
+          md:w-125`
+        }
+        dark:border-2 dark:bg-black dark:border-[#1e1e209f]`}
       >
-        <div ref={contentRef} className="overflow-y-auto flex-1">
-          {type !== "theme" && (
-            <header className="flex justify-between items-center mb-2 shrink-0">
+        <div ref={contentRef} className="overflow-y-auto flex-1 p-0.5">
+          {!disableHeader && (
+            <header className="w-full flex justify-between items-center mb-2 shrink-0">
               <span
-                data-shared-id="modal-title"
-                className="min-w-56 font-medium text-lg dark:text-[#e4e2e5]"
+                className="min-w-56 text-lg font-medium font-poppins
+                dark:text-[#e4e2e5]"
               >
                 {title}
               </span>
 
-              <button
+              <LiquidGlass
                 onClick={closeModal}
-                className="w-11 h-11 p-2.5 self-end flex items-center justify-center rounded-full
-              hover:bg-[#49454f21] hover:cursor-pointer
-              dark:hover:bg-[#28282bbd]"
+                className="p-2.5 self-end flex items-center justify-center rounded-full
+                hover:bg-[#49454f09] hover:cursor-pointer
+                dark:hover:bg-[#28282bbd]"
               >
-                <Icon name={"close"} size={24} className="dark:invert" />
-              </button>
+                <Icon
+                  name={"close"}
+                  size={24}
+                  className="text-[#75777E]
+                  dark:text-[#7E8088]"
+                />
+              </LiquidGlass>
             </header>
           )}
 

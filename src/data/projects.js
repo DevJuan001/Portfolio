@@ -10,7 +10,7 @@ export const projects = [
     objective: `Construir un panel web donde el equipo de inventario pueda registrar entradas, ventas y garantías en un solo lugar, con información en tiempo real y reportes descargables, sin procesos manuales ni hojas de cálculo.`,
     objectiveModules: [
       {
-        title: "Interfaz para el administrador:",
+        title: "Interfaz para el administrador",
         items: [
           "Dashboard con indicadores y gráficos de todo el inventario",
           "Gestión de usuarios: crear, editar, activar y desactivar cuentas",
@@ -19,7 +19,7 @@ export const projects = [
         ],
       },
       {
-        title: "Interfaz para el equipo de almacén y técnico:",
+        title: "Interfaz para el equipo de almacén y técnico",
         items: [
           "Registro de entradas de productos con serial, factura y proveedor",
           "Catálogo de productos, marcas, modelos y categorías",
@@ -29,26 +29,105 @@ export const projects = [
         ],
       },
     ],
+    features: [
+      {
+        icon: "monitoring",
+        title: "Dashboard en tiempo real",
+        description: `Toda la operación en una sola pantalla: cuánto stock hay, qué se movió hoy y qué garantías siguen abiertas.
+          En lugar de abrir cinco hojas de cálculo para entender cómo va el negocio, entras y lo ves.`,
+      },
+      {
+        icon: "package_2",
+        title: "Inventario por número de serie",
+        description: `Cada unidad se registra con su propio serial, no como una cantidad genérica en una fila.
+          Eso permite responder la pregunta que Excel nunca pudo: dónde está exactamente ese producto y por qué manos pasó.`,
+      },
+      {
+        icon: "orders",
+        title: "Órdenes de entrada y salida",
+        description: `Las compras a proveedores y las ventas a clientes quedan registradas como órdenes con su factura, su fecha y su responsable.
+          El stock se mueve solo cuando existe un documento que lo respalda, nunca "a mano".`,
+      },
+      {
+        icon: "encrypted",
+        title: "Garantías con ciclo de vida completo",
+        description: `Una garantía nace desde la venta que la originó, se le asigna un técnico y avanza por estados hasta cerrarse.
+          Deja de ser un correo perdido y pasa a ser un caso con historial y responsable.`,
+      },
+      {
+        icon: "bar_chart",
+        title: "Reportes con gráficos interactivos",
+        description: `Productos, categorías, subcategorías y salidas analizados por período, con gráficos de área y de torta además de la tabla.
+          Filtras el rango de fechas y la lectura del negocio se arma sola.`,
+      },
+      {
+        icon: "download",
+        title: "Exportación a PDF y Excel",
+        description: `Cualquier reporte se descarga listo para enviar a contabilidad o para imprimir en una reunión.
+          El PDF sale maquetado y el Excel sale con los datos crudos para que puedas seguir trabajándolos.`,
+      },
+      {
+        icon: "groups",
+        title: "Roles y permisos por perfil",
+        description: `Administrador, Almacén y Técnico ven una aplicación distinta según lo que les toca hacer.
+          Nadie se topa con botones que no le corresponden, y el servidor lo verifica en cada petición.`,
+      },
+      {
+        icon: "search",
+        title: "Búsqueda, filtros y scroll infinito",
+        description: `Los listados largos se navegan buscando y filtrando, cargando resultados a medida que bajas.
+          Aunque el catálogo crezca a miles de productos, la pantalla sigue respondiendo igual de rápido.`,
+      },
+      {
+        icon: "dark_mode",
+        title: "Modo claro y oscuro",
+        description: `La interfaz se adapta a la preferencia de cada persona y la recuerda entre sesiones.
+          Para un equipo que vive dentro del panel toda la jornada, esto deja de ser un capricho estético.`,
+      },
+    ],
     technicalDecisions: [
       {
-        title: `Control de acceso por roles desde el primer día:`,
-        explain: `El sistema maneja tres perfiles: Administrador, Almacén y Técnico. Cada uno solo ve y solo puede hacer lo que su rol le permite, y la regla se valida en el servidor en cada petición, así nadie entra a donde no debe por un descuido de la pantalla.`,
+        title: `Arquitectura por dominio en las dos puntas`,
+        content: `Backend y frontend se organizan por feature (productos, garantías, reportes...) y no por tipo de archivo.
+          En la API cada módulo baja por routes → controllers → services → repositories; en el cliente por page → hook → service.
+          El beneficio real es de mantenimiento: una funcionalidad se toca en una sola carpeta, y sumar un dominio nuevo no obliga a editar diez archivos compartidos.`,
       },
       {
-        title: `Inicio de sesión con cookies seguras:`,
-        explain: `El servidor entrega las credenciales en cookies especiales que el navegador guarda por ti y que ningún JavaScript puede leer. Si la sesión expira, la app la renueva sola sin que tengas que volver a escribir la contraseña.`,
+        title: `SQL parametrizado sin ORM`,
+        content: `El acceso a datos se escribe en SQL directo sobre MySQL 8 con sustitución por %s, nunca interpolando strings.
+          La decisión es deliberada: los reportes agregados por período son la parte más pesada del producto y con SQL propio controlo exactamente el plan de consulta en vez de pelear con el generador de un ORM.
+          El costo asumido es escribir más código; la contrapartida es que ninguna consulta hace algo que yo no haya escrito.`,
       },
       {
-        title: `Correos enviados en segundo plano:`,
-        explain: `Cuando se crea un usuario o se recupera una contraseña, el correo se manda en segundo plano con reintentos automáticos. La pantalla nunca se queda esperando y tú puedes seguir trabajando mientras tanto.`,
+        title: `Transacciones con rollback garantizado`,
+        content: `Toda escritura sigue el mismo contrato: el servicio abre la conexión, confirma al terminar, revierte ante cualquier excepción y cierra en el finally.
+          Una venta que falla a mitad de camino no puede dejar el inventario descontado y la orden sin crear: o pasa todo, o no pasa nada.`,
       },
       {
-        title: `Pruebas E2E con BDD:`,
-        explain: `Un proyecto aparte de Java con Serenity y Cucumber automatiza los flujos críticos (login, productos, usuarios, categorías, garantías y órdenes) escritos en español casi como si fueran instrucciones para una persona. Garantiza que el sistema funciona de punta a punta, no solo sus piezas por separado.`,
+        title: `Sesión en cookies HttpOnly con refresh de un solo vuelo`,
+        content: `Los tokens viajan en cookies HttpOnly, así que ningún JavaScript de la página puede leerlos y un XSS no se lleva la sesión.
+          Del lado del cliente, el interceptor comparte una única promesa de refresh entre todas las peticiones que reciben 401 al mismo tiempo.
+          Sin eso, una pantalla con seis consultas en paralelo dispara seis refresh simultáneos, invalida su propio token y termina expulsando al usuario.`,
       },
       {
-        title: `Reglas de negocio consistentes en el servidor:`,
-        explain: `El ciclo de vida del producto (activo, vendido, en garantía) se valida en una sola fuente de verdad en el servidor: nunca se puede crear una garantía de un producto que no se vendió, ni vender dos veces el mismo serial. La app no se rompe aunque alguien la use mal.`,
+        title: `Autorización verificada en el servidor`,
+        content: `Los roles (Administrador, Almacén, Técnico) no se resuelven ocultando botones en la interfaz: un middleware valida el rol contra el token en cada petición.
+          Esconder la UI mejora la experiencia, pero la frontera de seguridad está en el servidor, que es el único lugar donde el usuario no puede intervenir.`,
+      },
+      {
+        title: `Correos fuera del ciclo de la petición`,
+        content: `Los envíos de bienvenida, recuperación de contraseña y sugerencias se encolan en Redis y los procesa un worker de Celery con reintentos automáticos.
+          La respuesta al usuario no queda atada a la latencia de un servidor SMTP, y si el correo falla se reintenta solo en vez de perderse.`,
+      },
+      {
+        title: `Rate limiting y caché sobre Redis`,
+        content: `El mismo Redis que actúa de broker sostiene el limitador por IP (login mucho más restrictivo que los listados) y la caché de consultas frecuentes, con invalidación explícita al escribir.
+          Una sola pieza de infraestructura resolviendo tres necesidades: menos servicios que operar y menos superficie que puede fallar.`,
+      },
+      {
+        title: `Pruebas de carga con JMeter`,
+        content: `Un plan de JMeter ejercita los endpoints críticos bajo concurrencia para medir cómo responde la API cuando varios usuarios trabajan a la vez.
+          Sirve para detectar consultas lentas y límites de conexiones antes de que aparezcan en producción, no después.`,
       },
     ],
     images: [
@@ -56,7 +135,6 @@ export const projects = [
       "/projects/tracklinker-2.png",
       "/projects/tracklinker-3.png",
     ],
-    link: "https://tracklinker-frontend-web.vercel.app/",
     github: "https://github.com/DevJuan001/Tracklinker-frontend-web",
     alt: "Proyecto tracklinker",
     stack: ["Python", "FastAPI", "Redis", "React", "Tailwind", "Tanstack"],
@@ -65,61 +143,134 @@ export const projects = [
   {
     title: "Parking hackathon",
     icon: "projects/parking-logo.svg",
-    description: `Aplicación web para digitalizar la operación de un parqueadero,
-      el cliente registra su placa al ingresar, la app le asigna una plaza y al salir calcula y cobra automáticamente según la tarifa del tipo de vehículo;
-      el operador administra usuarios, plazas, pisos y tarifas desde un panel.`,
-    challenge: `Los parqueaderos pequeños y medianos operan con procesos manuales y desconectados: el guardia anota placas en papel, el cajero cobra "a ojo" sin cálculo real del tiempo, las plazas se asignan sin distinguir carro de moto, y el dueño no sabe cuánto entró ni cuánto se cobró al final del día. 
+    description: `SaaS multi-tenant para digitalizar la operación de un parqueadero: el conductor registra su placa al ingresar, la app le asigna plaza y al salir calcula y cobra según la tarifa de su tipo de vehículo.
+      El administrador gestiona pisos, plazas, tarifas, reservas y finanzas desde un panel, y puede operarlo conversando con un asistente de IA en lenguaje natural.`,
+    challenge: `Los parqueaderos pequeños y medianos operan con procesos manuales y desconectados: el guardia anota placas en papel, el cajero cobra "a ojo" sin cálculo real del tiempo, las plazas se asignan sin distinguir carro de moto, y el dueño no sabe cuánto entró ni cuánto se cobró al final del día.
       El software existente es caro, on-premise y no tiene una experiencia pensada para el conductor. Resultado: descuadros, cobros inconsistentes y cero trazabilidad.`,
     objective: `Construir un SaaS multi-tenant donde cualquier parqueadero pueda registrarse solo y operar en minutos, con dos experiencias en un mismo producto:`,
     objectiveModules: [
       {
-        title: "Interfaz para el administrador:",
+        title: "Interfaz para el administrador",
         items: [
-          "Dashboard en tiempo real",
-          "Configuración de pisos, plazas y tarifas",
-          "Gestión de usuarios",
-          "Registro de entradas/salidas con KPIs y filtros",
+          "Onboarding guiado para dejar el parqueadero operativo desde el registro",
+          "Dashboard y panel financiero en tiempo real",
+          "Configuración de pisos, plazas y tarifas por tipo de vehículo",
+          "Reservas con calendario mensual y diario",
+          "Gestión de usuarios y registro de entradas/salidas con KPIs y filtros",
+          "Asistente de IA para consultar y operar el parqueadero conversando",
         ],
       },
       {
-        title: "Interfaz para el cliente:",
+        title: "Interfaz para el cliente",
         items: [
           "El conductor digita su placa al entrar",
           "Asignación automática de plaza según tipo de vehículo",
           "Cálculo del cobro por tiempo real y tarifa",
           "Registro de salida, liberación de plaza y cobro sin intervención del guardia",
+          "Reserva anticipada desde un link público o código QR",
         ],
+      },
+    ],
+    features: [
+      {
+        icon: "how_to_reg",
+        title: "Registro y onboarding guiado",
+        description: `Un parqueadero nuevo se da de alta solo y queda operativo en minutos: nombre, ubicación, horarios, pisos y tarifas paso a paso.
+          Sin instalaciones ni visitas técnicas, que es justo lo que hace inviable al software tradicional del sector.`,
+      },
+      {
+        icon: "directions_car",
+        title: "Check-in por placa",
+        description: `El conductor digita su placa en la pantalla de entrada y el sistema le asigna una plaza libre acorde a su tipo de vehículo.
+          Se acabó la libreta del guardia: el ingreso queda registrado con hora exacta desde el primer segundo.`,
+      },
+      {
+        icon: "point_of_sale",
+        title: "Cobro automático por tiempo",
+        description: `Al salir, el sistema calcula el tiempo real de estadía, aplica la tarifa del vehículo y redondea el total a un valor cobrable.
+          El monto deja de depender del criterio del cajero y pasa a ser el mismo siempre.`,
+      },
+      {
+        icon: "calendar_month",
+        title: "Reservas con calendario",
+        description: `Las reservas se crean, editan y eliminan sobre un calendario mensual y diario, con vista de lo que ocurre en cada día.
+          El administrador ve la ocupación futura en lugar de enterarse cuando el carro ya está en la puerta.`,
+      },
+      {
+        icon: "qr_code_2",
+        title: "Link y código QR para reservar",
+        description: `Cada parqueadero tiene un enlace público y un QR que puede pegar en la entrada o compartir por WhatsApp.
+          El conductor reserva desde su celular sin instalar nada ni crear una cuenta.`,
+      },
+      {
+        icon: "cognition_2",
+        title: "Asistente de IA para administrar",
+        description: `El administrador escribe lo que necesita por ejemplo: "cuántas plazas libres hay", "cuánto facturamos hoy" y el asistente consulta o ejecuta la acción sobre el parqueadero real.`,
+      },
+      {
+        icon: "account_balance",
+        title: "Panel financiero",
+        description: `Ingresos, egresos y balance con gráficos e histórico filtrable por período.
+          El dueño responde cuánto entró hoy sin cuadrar nada a mano al cerrar el turno.`,
+      },
+      {
+        icon: "tune",
+        title: "Configuración de pisos, plazas y tarifas",
+        description: `Cada parqueadero modela su propia realidad: cuántos pisos tiene, cómo se llaman sus plazas, qué vehículo acepta cada una y cuánto cobra por tipo.
+          El producto se adapta al negocio en vez de obligar al negocio a adaptarse al producto.`,
+      },
+      {
+        icon: "login",
+        title: "Acceso con Google",
+        description: `Además del registro tradicional, se puede entrar con una cuenta de Google.
+          Una fricción menos en el momento más frágil del producto: el primer ingreso.`,
       },
     ],
     technicalDecisions: [
       {
-        title: `Multi-tenant desde el primer día:`,
-        explain: `Un mismo despliegue sirve a varios parqueaderos sin que se mezclen los datos.
-          El aislamiento vive en el JWT y se filtra en cada query del backend el frontend ni se entera.
-          Es lo que convierte el proyecto en un SaaS real y no en una app de un solo cliente.`,
+        title: `Aislamiento multi-tenant a nivel de token`,
+        content: `Un mismo despliegue atiende a varios parqueaderos y el identificador de tenant se lee siempre del JWT, jamás del body, la ruta o el query string.
+          Como el token está firmado por el servidor, un cliente no puede alterarlo para consultar datos de otro parqueadero aunque manipule la petición.
+          Es la diferencia entre un SaaS real y una app monocliente desplegada varias veces.`,
       },
       {
-        title: `Auth basada en cookies httpOnly de extremo a extremo:`,
-        explain: `El backend emite los tokens en cookies, el frontend manda credentials: "include" y refresca solo en 401.
-          Ninguna parte del sistema toca el JWT en JavaScript, Seguridad por diseño, no por parche.`,
+        title: `Asistente de IA con RAG y herramientas tipadas`,
+        content: `El chatbot no improvisa, cada consulta recupera contexto del parqueadero desde una base vectorial (Qdrant con embeddings locales) y el modelo solo puede actuar mediante un registro de herramientas con esquema declarado y rol requerido.
+          Así las respuestas se apoyan en datos reales del tenant y las acciones pasan por la misma lógica de negocio que el resto de la API, en lugar de dejar que el modelo escriba en la base de datos.`,
       },
       {
-        title: `Emails fuera del request.`,
-        explain: `El backend encola los correos en Redis con Celery y responde al usuario de inmediato; el envío va en segundo plano con reintentos automáticos.
-          Así el registro o la recuperación de contraseña nunca se sienten lentos.`,
+        title: `Defensa en profundidad del asistente`,
+        content: `Antes de llegar al modelo, un clasificador descarta intentos de inyección de prompt. El prompt del sistema restringe el dominio, las herramientas destructivas exigen una confirmación explícita y el aislamiento por tenant se aplica igual que en el resto del sistema.
+          El principio es tratar al modelo como entrada no confiable: es un cliente más de la API, no una puerta trasera con permisos especiales.`,
       },
       {
-        title: `Pruebas E2E con BDD:`,
-        explain: `Un proyecto Java aparte con Serenity + Cucumber y Gherkin en español cubre 8 flujos críticos (login, CRUD de usuarios, pisos, plazas, entradas y check-in del cliente) automatizando el navegador.
-          Demuestra que el producto funciona de punta a punta, no solo en unit tests.`,
+        title: `Memoria conversacional acotada en Redis`,
+        content: `El historial vive por parqueadero y usuario con tope de mensajes y expiración automática, saneando secuencias incompletas de llamadas a herramientas antes de reenviarlas al modelo.
+          Sin ese saneo, una conversación cortada a la mitad deja mensajes huérfanos que rompen la siguiente petición; con el tope y el TTL, el costo por consulta se mantiene predecible.`,
       },
       {
-        title: `Reglas de negocio consistentes en el backend:`,
-        explain: `Plazas tipadas por vehículo, tarifas por tipo, redondeo a múltiplo de 50, liberación de plaza al pagar, todo en transacciones del backend.`,
+        title: `Sesión en cookies HttpOnly de extremo a extremo`,
+        content: `El servidor emite los tokens como cookies HttpOnly, el cliente envía las credenciales en cada petición y solo renueva cuando recibe un 401.
+          Ninguna parte del sistema manipula el token desde JavaScript: la seguridad es una consecuencia del diseño, no un parche agregado después.`,
+      },
+      {
+        title: `Reglas de negocio dentro de transacciones`,
+        content: `Plazas tipadas por vehículo, tarifas por tipo, redondeo del cobro y liberación de la plaza al pagar viven en transacciones del servidor.
+          Cobrar y liberar la plaza es una sola operación atómica: no puede existir un estado intermedio donde el conductor pagó pero la plaza sigue ocupada.`,
+      },
+      {
+        title: `Trabajo diferido y límites de uso sobre Redis`,
+        content: `Los correos se encolan con Celery y se envían en segundo plano con reintentos, mientras el mismo Redis sostiene el rate limiting por endpoint.
+          El registro y la recuperación de contraseña responden de inmediato, y los endpoints sensibles quedan protegidos frente a abuso automatizado.`,
+      },
+      {
+        title: `Pruebas unitarias sobre la capa de utilidades`,
+        content: `La suite de pytest cubre las funciones donde un error es silencioso y caro: normalización de placas, redondeo del cobro, manejo de fechas y períodos, y validación de entradas.
+          Es deliberado priorizar ahí: son piezas puras, se prueban rápido y son exactamente las que producen descuadres de dinero si fallan.`,
       },
     ],
-    link: "https://tracklinker-frontend-web.vercel.app/",
-    github: "https://github.com/DevJuan001/parking-hackathon",
+    link: "https://parking-hackathon-frontend.onrender.com/",
+    github: "https://github.com/DevJuan001/parking-hackathon-backend",
     images: [
       "projects/parking-1.png",
       "projects/parking-2.png",
