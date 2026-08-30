@@ -54,16 +54,17 @@ export default function ProjectItem({ project, reversed = false }) {
 
         <div className="flex flex-wrap gap-1.5">
           {project.stack.map((name) => {
-            const technology = technologies[name];
+            const TechnologyIcon = technologies[name];
 
             return (
               <div
                 key={name}
-                className={`flex items-center gap-1 py-1 px-2.5 rounded-full ${technology.styles}`}
+                className="flex items-center gap-1 py-1 px-2.5 bg-[#e4e2e588] rounded-full
+                dark:bg-[#28282B] dark:text-[#E4E2E5]"
               >
-                <technology.icon className="w-3.5 h-3.5" />
+                <TechnologyIcon className="w-3.5 h-3.5" />
 
-                <span className="text-xs font-medium">{technology.name}</span>
+                <span className="text-xs font-medium">{name}</span>
               </div>
             );
           })}
