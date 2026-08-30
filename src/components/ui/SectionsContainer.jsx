@@ -1,7 +1,7 @@
-import Contact from "./Contact";
-import Footer from "./Footer";
-import Hero from "./Hero";
-import Projects from "./Projects";
+import Hero from "@components/ui/Hero";
+import Footer from "@components/ui/Footer";
+import Contact from "@components/ui/Contact";
+import Projects from "@components/ui/Projects";
 
 export default function SectionsContainer() {
   return (
