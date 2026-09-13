@@ -8,18 +8,200 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(Flip, CustomEase);
 }
 
-// Curva de apertura: dos segmentos con tangentes continuas en la unión
-// (ambas en 0.2, 0.15) para que no haya "jerk" al pasar del primero al
-// segundo. El segundo segmento tiene el control 2 en (0.9, 1) para que
-// la tangente final sea horizontal y el aterrizaje sea smooth de verdad.
-const MODAL_OPEN_EASE = "modalOpen";
-const MODAL_OPEN_DURATION = 0.45;
+// Una sola curva gobierna todo el morph, apertura y cierre. Los dos
+// segmentos comparten tangente en la unión, así que no hay quiebre al
+// pasar del primero al segundo, y el control 2 final en (0.656, 1) deja
+// la tangente horizontal: el aterrizaje no rebota ni se corta.
+const MODAL_MORPH_EASE = "modalMorph";
+const MODAL_OPEN_EASE = MODAL_MORPH_EASE;
+const MODAL_OPEN_DURATION = 0.7;
+// El cierre es notoriamente más corto que la apertura. Abrir es una
+// invitación y se puede tomar su tiempo; cerrar es una respuesta a algo que
+// el usuario ya decidió, y cada centésima de más se siente como que la
+// interfaz no lo suelta. La curva es la misma: lo único que cambia es
+// cuánto dura.
+const MODAL_CLOSE_DURATION = 0.45;
+
+// El cierre reparte el trabajo en dos curvas distintas: la forma se
+// redondea antes que el desenfoque, así el contenido ya perdió sus
+// bordes cuando empieza a disolverse.
+const MODAL_CLOSE_SHAPE_EASE = "modalCloseShape";
+const MODAL_CLOSE_BLUR_EASE = "modalCloseBlur";
+
+// El color del phantom NO viaja con la curva del morph. Esa curva se toma su
+// tiempo a proposito — es la caja recorriendo media pantalla — y arrastrar el
+// color con ella deja al elemento vestido de su origen casi todo el vuelo,
+// para recien virar sobre el final. Se lee como un parpadeo tardio, no como
+// una transicion. El color resuelve la IDENTIDAD del elemento, y eso tiene
+// que quedar decidido temprano; despues la geometria sigue viajando sola. Es
+// el mismo reparto que ya usa el fondo de la propia modal contra su FLIP.
+const PHANTOM_COLOR_RATIO = 0.25;
+const PHANTOM_COLOR_EASE = "power2.out";
+
+// El contenido entra con desenfoque proporcional a su tamaño y se va con
+// uno mucho mayor: un modal es una superficie completa, no una fila.
+const CONTENT_OPEN_BLUR = 8;
+const CONTENT_CLOSE_BLUR = 32;
+
+// El content encoge cuatro veces más lento que la caja, así que al terminar
+// el cierre recorrió apenas un cuarto del camino. Es deliberado: lo que se
+// ve es una caja cerrándose encima del contenido, no el contenido siendo
+// absorbido por el botón. Se deriva de la duración del cierre para que la
+// proporción sobreviva a cualquier ajuste de velocidad.
+const CONTENT_CLOSE_DRIFT_DURATION = MODAL_CLOSE_DURATION * 4;
+
+// El fondo se apaga con la misma duración que la caja, pero con power3.in:
+// sigue en pantalla mientras la caja ya está llegando al trigger.
+const OVERLAY_COLOR = "rgba(0,0,0,0.1)";
+const OVERLAY_OPEN_DURATION = 0.5;
+
+// El trigger reaparece recién cuando la caja ya casi llegó, para que se
+// lea como un único movimiento y no como dos cosas compitiendo. Las dos
+// salen de la duración del cierre — arranca al 40% y termina en el mismo
+// frame que la caja — o al acortar el cierre el botón quedaría apareciendo
+// después de que la modal ya no está.
+// El disparador termina de aparecer ANTES de que el cierre acabe, no junto
+// con el. Terminar en el mismo frame que la caja dejaba una carrera: el
+// cleanup le pone display:none a la modal y el boton todavia venia en 0.9 de
+// opacidad, asi que el ultimo tramo del fade quedaba a la intemperie y se
+// leia como un pop. Cerrando en el 85% el boton ya esta asentado mientras la
+// caja — que a esa altura tiene su mismo tamano y su mismo color — todavia lo
+// tapa, y lo unico que pasa al final es que la caja desaparece.
+const TRIGGER_RESTORE_DELAY = MODAL_CLOSE_DURATION * 0.45;
+const TRIGGER_RESTORE_DURATION = MODAL_CLOSE_DURATION * 0.4;
 
 if (typeof window !== "undefined") {
   CustomEase.create(
-    MODAL_OPEN_EASE,
-    "M0,0 C0.15,0.1 0.2,0.7 0.4,0.85 0.6,1 0.9,1 1,1",
+    MODAL_MORPH_EASE,
+    "M0,0 C0.308,0.19 0.107,0.633 0.288,0.866 0.382,0.987 0.656,1 1,1",
   );
+  CustomEase.create(MODAL_CLOSE_SHAPE_EASE, ".56,.27,0,1");
+  CustomEase.create(MODAL_CLOSE_BLUR_EASE, ".37,.35,0,1");
+}
+
+// Curva spring de 21 tramos para el tinte del overlay: se dispara al 56%
+// en el 20% del recorrido y después se asienta. Se recorre a mano porque
+// GSAP no interpola un linear() de CSS.
+const OVERLAY_TINT_STOPS = [
+  [0, 0],
+  [0.025, 0.017],
+  [0.05, 0.037],
+  [0.075, 0.061],
+  [0.1, 0.091],
+  [0.125, 0.13],
+  [0.15, 0.184],
+  [0.175, 0.275],
+  [0.2, 0.562],
+  [0.225, 0.733],
+  [0.25, 0.803],
+  [0.275, 0.848],
+  [0.3, 0.88],
+  [0.325, 0.902],
+  [0.4, 0.942],
+  [0.5, 0.97],
+  [0.6, 0.985],
+  [0.7, 0.993],
+  [0.8, 0.998],
+  [0.9, 1],
+  [1, 1],
+];
+
+function overlayTintEase(progress) {
+  if (progress <= 0) return 0;
+  if (progress >= 1) return 1;
+
+  let index = 0;
+  while (
+    index < OVERLAY_TINT_STOPS.length - 2 &&
+    OVERLAY_TINT_STOPS[index + 1][0] < progress
+  ) {
+    index++;
+  }
+
+  const [fromProgress, fromValue] = OVERLAY_TINT_STOPS[index];
+  const [toProgress, toValue] = OVERLAY_TINT_STOPS[index + 1];
+
+  return (
+    fromValue +
+    ((progress - fromProgress) / (toProgress - fromProgress)) *
+      (toValue - fromValue)
+  );
+}
+
+// Tailwind v4 emite toda su paleta en oklch() y GSAP no sabe parsearlo:
+// interpola hacia un gris translúcido y el morph se tiñe de un color que
+// no está en ninguna de las dos puntas — un verde saliendo hacia blanco
+// pasaba por gris con alpha 0.44.
+//
+// No alcanza con asignar el color a fillStyle y leerlo de vuelta: Chrome
+// soporta CSS Color 4 en canvas y devuelve el oklch() intacto. Hay que
+// pintar el pixel y leerlo, que es lo que fuerza la conversión a sRGB.
+const colorProbe =
+  typeof document !== "undefined"
+    ? (() => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        return canvas.getContext("2d", { willReadFrequently: true });
+      })()
+    : null;
+
+function toGsapColor(color) {
+  if (!colorProbe || !color || color.startsWith("rgb") || color.startsWith("#"))
+    return color;
+
+  colorProbe.clearRect(0, 0, 1, 1);
+  colorProbe.fillStyle = "#000000";
+  colorProbe.fillStyle = color;
+  colorProbe.fillRect(0, 0, 1, 1);
+
+  const [red, green, blue, alpha] = colorProbe.getImageData(0, 0, 1, 1).data;
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha / 255})`;
+}
+
+/**
+ * Devuelve un box-shadow de destino que GSAP pueda interpolar contra `from`.
+ *
+ * La sombra no se puede tweenear hacia `none`: GSAP interpola string contra
+ * string emparejando numeros posicion por posicion, y "none" no tiene ninguno,
+ * asi que la sombra no se va apagando — se corta de un frame al otro. Cuando
+ * el destino no tiene sombra devolvemos una con la MISMA cantidad de capas que
+ * la de origen pero en cero y transparente: misma forma, valores nulos, y el
+ * apagado se interpola como cualquier otra cosa.
+ */
+function matchedShadow(from, to) {
+  if (to && to !== "none") return to;
+  if (!from || from === "none") return "none";
+
+  return from
+    .split(/,(?![^(]*\))/)
+    .map(() => "rgba(0, 0, 0, 0) 0px 0px 0px 0px")
+    .join(", ");
+}
+
+/**
+ * Fija en inline los colores ya normalizados a rgb para que todo lo que
+ * lea el morph (Flip, tweens explícitos, phantoms) trabaje sobre valores
+ * parseables. Se limpian al terminar la animación.
+ */
+function pinReadableColors(elements) {
+  for (const element of elements) {
+    if (!element) continue;
+
+    const styles = window.getComputedStyle(element);
+    element.style.backgroundColor = toGsapColor(styles.backgroundColor);
+    element.style.color = toGsapColor(styles.color);
+  }
+}
+
+function releaseReadableColors(elements) {
+  for (const element of elements) {
+    if (!element) continue;
+
+    element.style.removeProperty("background-color");
+    element.style.removeProperty("color");
+  }
 }
 
 /**
@@ -55,36 +237,6 @@ function findSharedPairs(sourceContainer, targetContainer, targetModal) {
 }
 
 /**
- * Encuentra el conjunto MÍNIMO de nodos que cubren todo el contenido excepto
- * las ramas que llevan a un shared element. Walk descendente: si un hijo NO
- * tiene ningún data-shared-id adentro, lo agrega entero y no recursa. Si SÍ
- * tiene un shared descendiente, recursa a sus hijos para excluir solo la rama
- * del shared.
- *
- * Antes se hacía content.querySelectorAll("*") y se filtraban ~40 nodos
- * individuales para animarlos. Cada nodo animado con filter/opacity crea su
- * propia capa de compositing, así que 40 nodos = 40 capas GPU. En devices sin
- * GPU dedicada (o en el primer paint del sitio, cuando el compositor todavía
- * no está caliente) esto era el mayor costo del cierre. Ahora agrupamos por
- * ramas y bajamos a ~3-5 nodos animados.
- */
-function collectFadeTargets(root) {
-  const targets = [];
-  const walk = (el) => {
-    for (const child of el.children) {
-      if (child.hasAttribute("data-shared-id")) continue;
-      if (child.querySelector("[data-shared-id]")) {
-        walk(child);
-      } else {
-        targets.push(child);
-      }
-    }
-  };
-  walk(root);
-  return targets;
-}
-
-/**
  * Devuelve el borderRadius de un elemento como un string de 4 valores
  * explícitos "TL TR BR BL" (top-left, top-right, bottom-right, bottom-left),
  * leyendo los longhands reales del computed style. Esto evita ambigüedades
@@ -114,10 +266,57 @@ function radiusAsFourCorners(el) {
  * del target como ratio unitless (40/36 ≈ 1.11) para que escale con el
  * fontSize durante la animación y matchee exacto al final.
  */
-function createPhantom(element, rect, targetEl = null) {
+/**
+ * El fontSize de la raíz del phantom NO alcanza a los descendientes que traen
+ * tipografía propia: `Icon` escribe su `font-size` y su eje `opsz` inline, así
+ * que el clon de una insignia de 26px se quedaba con un glifo de 26px dentro
+ * de una caja que ya medía la del destino (80px). Se veía como un icono que
+ * crece tarde y salta al final del vuelo.
+ *
+ * Como acá el viaje es una escala, no hace falta animar nada: alcanza con que
+ * el subárbol nazca con las métricas del destino y la escala lo lleve. Se
+ * emparejan los nodos por posición en el árbol; si las dos estructuras no
+ * coinciden no se toca nada, porque tipografiar el nodo equivocado es peor que
+ * no tipografiar ninguno.
+ */
+function syncDescendantTypography(clone, destination) {
+  const cloneNodes = clone.querySelectorAll("*");
+  const destinationNodes = destination.querySelectorAll("*");
+
+  if (cloneNodes.length !== destinationNodes.length) return;
+
+  cloneNodes.forEach((node, index) => {
+    const styles = window.getComputedStyle(destinationNodes[index]);
+
+    node.style.fontSize = styles.fontSize;
+
+    // Material Symbols dibuja el trazo según `opsz`: sin copiarlo, el glifo
+    // llega con la óptica del tamaño viejo y se corrige de golpe en el swap.
+    if (
+      styles.fontVariationSettings &&
+      styles.fontVariationSettings !== "normal"
+    ) {
+      node.style.fontVariationSettings = styles.fontVariationSettings;
+    }
+  });
+}
+
+/**
+ * Clona un shared element y lo deja montado EN SU DESTINO: con la caja, el
+ * fontSize y el radio que va a tener cuando llegue. El vuelo después se hace
+ * sólo con transform (ver animatePhantom).
+ *
+ * Es al revés de lo que parece natural, y es a propósito. Rasterizar el texto
+ * al tamaño de destino y escalarlo hacia abajo significa que el glifo está en
+ * su punto más nítido justo cuando aterriza, y que lo blando queda en la punta
+ * lejana del viaje, donde el elemento es chico y va rápido. Rasterizar en el
+ * origen y escalar hacia arriba haría lo contrario: llegaría borroso.
+ */
+function createPhantom(element, destinationRect, targetEl = null) {
   const phantom = element.cloneNode(true);
   const styles = window.getComputedStyle(element);
   const targetStyles = targetEl ? window.getComputedStyle(targetEl) : styles;
+  const rect = destinationRect;
 
   // LineHeight como ratio unitless para que escale con fontSize durante
   // la animación. Si el target no es texto (img), lo dejamos como el del source.
@@ -152,7 +351,9 @@ function createPhantom(element, rect, targetEl = null) {
     margin: "0",
     zIndex: "99999",
     pointerEvents: "none",
-    borderRadius: radiusAsFourCorners(element),
+    borderRadius: targetEl
+      ? radiusAsFourCorners(targetEl)
+      : radiusAsFourCorners(element),
     objectFit: styles.objectFit || "cover",
     // Matamos cualquier CSS transition que el source tuviera (ej:
     // `transition-all duration-200` en botones). Si la dejáramos, el
@@ -163,28 +364,14 @@ function createPhantom(element, rect, targetEl = null) {
     // shared elements (imagen, título) no tienen transition, por eso
     // esos sí van sincronizados.
     transition: "none",
-    // Forzamos white-space:nowrap durante el vuelo para que el texto no
-    // se re-wrapee cuando el fontSize cambia. Sin esto, la primera palabra
-    // cabe en el ancho del box pero las siguientes bajan a una nueva línea
-    // (o se salen del box) y no animan correctamente. Con nowrap, todas
-    // las palabras están en una sola línea durante todo el vuelo, creciendo
-    // juntas. El snap-to-final al final copia el white-space del target
-    // (que puede ser "normal" con wrap) antes de revelar el real.
-    whiteSpace: "nowrap",
-    // willChange mínimo: solo lo que animatePhantom cambia frame a frame.
-    // Antes teníamos 7 props declaradas (border-radius, width, height,
-    // top, left...) y cada una reservaba memoria GPU al pedo desde el
-    // primer paint del sitio.
+    // El texto se maqueta UNA sola vez, con la caja y la tipografía del
+    // destino, y no vuelve a tocarse: el vuelo es puro transform. Por eso ya
+    // no hace falta forzar `white-space: nowrap` (no hay re-wrap posible) ni
+    // apagar el kerning con `text-rendering: optimizeSpeed` (no hay
+    // re-rasterizado por frame que produzca tremble). El fantasma wrappea
+    // exactamente igual que el elemento real al que va a reemplazar.
     willChange: "transform, opacity",
-    // text-rendering:optimizeSpeed → desactiva kerning y ligatures durante
-    // el raster del glyph. La mayor fuente de tremble en el phantom cuando
-    // el fontSize interpola frame a frame era que el browser recalculaba
-    // kerning entre glyphs con métricas ligeramente distintas → posición
-    // por-glyph cambiaba subpixel → tremble visible. Sin kerning, los
-    // glyphs se posicionan solo por advance width (más estable frame a
-    // frame). Como el phantom vive solo 0.4s durante el vuelo y se swappea
-    // al target al final, no hay pérdida de calidad tipográfica visible.
-    textRendering: "optimizeSpeed",
+    fontSize: targetStyles.fontSize,
     fontWeight: styles.fontWeight,
     // Font del TARGET: si source y target usan fonts distintas (ej: el
     // span del botón hereda la del padre, el del modal usa font-dmsans),
@@ -206,101 +393,95 @@ function createPhantom(element, rect, targetEl = null) {
   phantom.style.setProperty("visibility", "visible", "important");
   phantom.style.setProperty("opacity", "1", "important");
 
+  if (targetEl) syncDescendantTypography(phantom, targetEl);
+
   document.body.appendChild(phantom);
   return phantom;
 }
 
 /**
- * Anima un phantom desde su rect actual hasta un rect destino interpolando
- * posición, tamaño, borderRadius, fontSize y color. Preserva el aspect ratio
- * REAL del phantom frame a frame porque anima width y height como valores
- * independientes (no como scale uniforme), evitando el "aplastado" visible
- * cuando source y target tienen aspect ratios distintos.
+ * Vuela el phantom desde el rect de origen hasta donde ya está montado (su
+ * destino), usando SOLO transform: x/y para la posicion y scale para el
+ * tamaño. Ni la caja ni el fontSize se tocan, asi que no hay layout por frame.
  *
- * Cost por frame por shared element: 4 layouts (top/left/w/h) + 1 paint
- * (borderRadius) + 1 layout (fontSize) + 1 paint (color) ≈ 7 ops. Para
- * 1-2 shared elements por modal es aceptable.
- *
- * Usa MODAL_OPEN_EASE (la misma curva que el FLIP de apertura) para que el
- * deslizamiento vaya al mismo ritmo que la apertura del modal.
- * Retorna el timeline de GSAP para poder encadenarlo.
+ * Esto reemplaza al esquema anterior, que interpolaba width/height/fontSize y
+ * ademas necesitaba animar a mano la tipografia de cada descendiente: `Icon`
+ * escribe su font-size inline y el del phantom no lo alcanzaba, asi que el
+ * glifo se quedaba clavado en el tamaño de origen y saltaba al final. Con una
+ * escala todo el subarbol viaja junto y ese problema desaparece solo.
  */
 function animatePhantom(
   phantom,
   fromRect,
   toRect,
-  fromBorderRadius,
   toBorderRadius,
   {
     duration = 0.6,
-    ease = MODAL_OPEN_EASE,
+    ease = MODAL_MORPH_EASE,
     delay = 0,
-    fromFontSize,
-    toFontSize,
     fromColor,
     toColor,
+    fromWeight,
+    toWeight,
   } = {},
 ) {
   gsap.set(phantom, {
     force3D: true,
     willChange: "transform, opacity",
+    // La caja queda fija en el destino: el viaje entero es transform.
+    top: toRect.top,
+    left: toRect.left,
+    width: toRect.width,
+    height: toRect.height,
+    borderRadius: toBorderRadius,
+    transformOrigin: "0 0",
+    x: 0,
+    y: 0,
   });
 
   const tl = gsap.timeline();
 
-  // 1) Caja: posición, tamaño, borderRadius. Redondeamos solo top/left a
-  //    enteros (para evitar subpixel positioning del box). NO redondeamos
-  //    width/height porque cuando el recorrido del phantom es corto, el
-  //    cambio de width/height por frame es < 1px y el roundProps hacía que
-  //    el box se quedara atascado en el tamaño del source durante casi todo
-  //    el vuelo, saltando al tamaño del target solo al final.
   tl.fromTo(
     phantom,
     {
-      top: fromRect.top,
-      left: fromRect.left,
-      width: fromRect.width,
-      height: fromRect.height,
-      borderRadius: fromBorderRadius,
+      x: fromRect.left - toRect.left,
+      y: fromRect.top - toRect.top,
+      scaleX: toRect.width ? fromRect.width / toRect.width : 1,
+      scaleY: toRect.height ? fromRect.height / toRect.height : 1,
     },
-    {
-      top: toRect.top,
-      left: toRect.left,
-      width: toRect.width,
-      height: toRect.height,
-      borderRadius: toBorderRadius,
-      duration,
-      ease,
-      delay,
-      // Redondeo de top/left a enteros: sin esto, el browser renderiza el
-      // box en posiciones subpixel cada frame y el texto queda con mucho
-      // jitter porque el antialiasing recalcula la posición del glyph.
-      roundProps: ["top", "left"],
-    },
+    { x: 0, y: 0, scaleX: 1, scaleY: 1, duration, ease, delay },
   );
 
-  // 2) Font-size: interpolamos suavemente sin roundProps. El "step" de 1px
-  //    que causaba roundProps era MÁS visible que el jitter subpixel que
-  //    intentaba prevenir. En browsers modernos el subpixel raster está
-  //    bastante bien optimizado; combinado con text-rendering:optimizeSpeed
-  //    en createPhantom (que desactiva kerning por frame) queda smooth.
-  if (fromFontSize && toFontSize && fromFontSize !== toFontSize) {
+  // El color es lo unico que no viaja en el transform, asi que se interpola
+  // aparte para que el texto se funda con el estilo del destino en vez de
+  // saltar en el swap final.
+  if (fromColor && toColor && fromColor !== toColor) {
     tl.fromTo(
       phantom,
-      { fontSize: fromFontSize },
-      { fontSize: toFontSize, duration, ease, delay },
+      { color: toGsapColor(fromColor) },
+      {
+        color: toGsapColor(toColor),
+        duration: duration * PHANTOM_COLOR_RATIO,
+        ease: PHANTOM_COLOR_EASE,
+      },
       delay,
     );
   }
 
-  // 3) Color: interpolamos el color de texto del source al del target
-  //    para que el texto se funda progresivamente con el estilo del
-  //    destino en lugar de saltar al final del swap.
-  if (fromColor && toColor && fromColor !== toColor) {
+  // El peso SI viaja todo el trayecto y con la curva del morph, al reves que
+  // el color. El color es identidad y se decide temprano; el peso es forma del
+  // glifo, de la misma familia que el tamano, y el tamano viaja hasta el final.
+  // Separarlos deja el texto engordando cuando ya dejo de crecer.
+  //
+  // Requiere una fuente variable — DM Sans se carga con el eje wght en
+  // 100..1000, asi que el navegador interpola de verdad. Con una familia de
+  // pesos estaticos el navegador salta al corte mas cercano y esto se ve peor
+  // que no animarlo.
+  if (fromWeight && toWeight && fromWeight !== toWeight) {
     tl.fromTo(
       phantom,
-      { color: fromColor },
-      { color: toColor, duration, ease },
+      { fontWeight: Number(fromWeight) },
+      { fontWeight: Number(toWeight), duration, ease },
       delay,
     );
   }
@@ -457,20 +638,62 @@ export const useFlipModal = ({
   // Vale null cuando no hay apertura pendiente (ya terminó o no arrancó).
   const settleOpenRef = useRef(null);
 
+  // Espejo del anterior para el cierre: mientras hay un cierre en vuelo acá
+  // vive la función que lo termina de golpe, para que una apertura no tenga
+  // que esperar el medio segundo que dura.
+  const settleCloseRef = useRef(null);
+
+  // Vale true desde que arranca un cierre hasta un frame después de que
+  // terminó de limpiar. Lo mira el reposicionamiento por resize para no
+  // pisar la geometría que el cierre está animando (ver el effect de
+  // REPOSICIONAMIENTO al final del hook).
+  const isClosingRef = useRef(false);
+
+  // Espejo de `triggerRef` para poder sacarlo de las dependencias del effect
+  // de apertura sin quedarnos leyendo un valor viejo.
+  //
+  // `useModal` y `useInnerModal` construyen un objeto NUEVO ({element, rect})
+  // en cada llamada a openModal. Con `triggerRef` en las dependencias, volver
+  // a disparar el trigger con la modal YA abierta reejecutaba toda la
+  // apertura encima de sí misma, aunque `isOpen` nunca hubiera cambiado.
+  //
+  // Y se dispara solo: el trigger queda en opacity 0 pero sigue siendo el
+  // elemento con foco, así que un Enter lo activa de nuevo. Cada Enter
+  // reproducía el FLIP entero — se veía como que la modal se cerraba y se
+  // volvía a abrir — y encima la dejaba más chica, porque el remedido caía
+  // sobre un modal que el FLIP anterior estaba redimensionando y tomaba un
+  // tamaño intermedio como si fuera el final.
+  //
+  // La apertura ahora depende solo de `isOpen`. Reabrir sobre una modal
+  // abierta no es una operación con sentido: si el trigger cambia de verdad,
+  // el cierre igual usa el último (lo remide en vivo).
+  // El valor inicial cubre el primer render (la apertura puede ocurrir en el
+  // mismo commit en que se monta); el effect mantiene el espejo al día
+  // después. Va declarado ANTES del effect de apertura para que, cuando los
+  // dos corran en el mismo commit, el espejo ya esté actualizado.
+  const triggerRefLatest = useRef(triggerRef);
+  useEffect(() => {
+    triggerRefLatest.current = triggerRef;
+  }, [triggerRef]);
+
   // ANIMACIÓN DE APERTURA
   useEffect(() => {
     const modal = modalRef.current;
     const content = contentRef.current;
     const overlay = overlayRef?.current;
 
+    // Leído del espejo y no de la prop: es lo que mantiene la apertura fuera
+    // de las dependencias (ver triggerRefLatest arriba).
+    const trigger = triggerRefLatest.current;
+
     // Normalizamos el trigger ya que este puede ser un objeto del hook useModal ({element, rect})
     // o un Ref de React estándar ({current: element})
-    const element = triggerRef?.element || triggerRef?.current;
+    const element = trigger?.element || trigger?.current;
     if (!isOpen || !modal || !element) return;
 
-    // Obtenemos el rect del trigger. Si viene precalculado en triggerRef.rect lo usamos
+    // Obtenemos el rect del trigger. Si viene precalculado en trigger.rect lo usamos
     // directamente para evitar un reflow innecesario.
-    const rect = triggerRef.rect || element.getBoundingClientRect();
+    const rect = trigger.rect || element.getBoundingClientRect();
 
     // Etiquetamos el modal con su ID único para scoping.
     // Esto nos permite filtrar "shared elements" más adelante sin mezclar
@@ -489,6 +712,13 @@ export const useFlipModal = ({
     const raf = requestAnimationFrame(() => {
       if (cancelled) return;
 
+      // Si el usuario reabrió mientras la modal se estaba cerrando, primero
+      // asentamos ese cierre: deja los estilos restaurados y no dispara
+      // onClose, así la apertura arranca de un estado limpio en vez de
+      // pelearse con un timeline en vuelo.
+      settleCloseRef.current?.();
+      modal.style.removeProperty("display");
+
       // Matamos cualquier tween activo sobre estos elementos para evitar conflictos
       // con animaciones anteriores que no hayan terminado (ej: re-apertura rápida).
       gsap.killTweensOf([modal, content, element, overlay]);
@@ -497,12 +727,33 @@ export const useFlipModal = ({
       // scroll, no se transforma, así que promoverlo a capa GPU es desperdicio
       gsap.set(modal, { force3D: true, willChange: "transform" });
 
+      // El nodo del modal puede sobrevivir a un cierre anterior, y ese cierre
+      // le dejó el PADDING del disparador puesto inline (lo fija para que el
+      // Flip interpole la caja hacia la forma del botón). Si medimos con ese
+      // residuo, el alto sale calculado con el padding chico del botón en vez
+      // del propio: el modal termina clavado varias decenas de píxeles más
+      // bajo de lo que necesita y recorta el contenido — el pie de botones
+      // cortado por el borde. Volvemos al estado que dicta el CSS antes de
+      // tomar la medida.
+      gsap.set(modal, { clearProps: "padding,backgroundColor,color" });
+
+      // Y por el mismo motivo soltamos la caja antes de medirla. El FLIP
+      // escribe width/height inline en cada frame, y `min-height/min-width: 0`
+      // sólo se retiran cuando la apertura termina de asentarse: si una
+      // apertura anterior quedó a mitad de camino, `offsetWidth` no devuelve
+      // el tamaño que dicta el CSS sino el interpolado de ese instante — más
+      // chico. Medir eso y fijarlo como tamaño final es lo que hacía que la
+      // modal se achicara un poco más en cada pasada.
+      modal.style.removeProperty("min-height");
+      modal.style.removeProperty("min-width");
+      gsap.set(modal, { clearProps: "width,height" });
+
       // Medimos el tamaño final real del modal en su estado expandido.
       // Es importante hacerlo ANTES de modificar cualquier estilo para obtener valores correctos.
       const fullWidth = modal.offsetWidth;
       const fullHeight = modal.offsetHeight;
       const modalCs = window.getComputedStyle(modal);
-      const finalBg = modalCs.backgroundColor;
+      const finalBg = toGsapColor(modalCs.backgroundColor);
       // Leemos el borderRadius real del modal definido por modalStyles.js
       // (ej: rounded-[32px], rounded-none, etc.) ANTES de sobrescribirlo abajo.
       // Así respetamos el radio que cada tipo de modal configure.
@@ -527,7 +778,18 @@ export const useFlipModal = ({
       // la apertura. Con width fijo, el texto se layoutea una sola vez con
       // su forma final, y el overflow:hidden del modal lo recorta
       // progresivamente mientras crece.
-      gsap.set(content, { width: content.offsetWidth });
+      // El content sale del reparto flex y queda congelado en su caja final.
+      // `flex-1` es `flex: 1 1 0%` y en el eje principal flex-basis le gana a
+      // height, así que sin esto el content se encoge junto con la caja y el
+      // texto se re-fluye al ancho de un botón durante todo el vuelo.
+      gsap.set(content, {
+        flexGrow: 0,
+        flexShrink: 0,
+        flexBasis: "auto",
+        width: content.offsetWidth,
+        height: content.offsetHeight,
+        transformOrigin: "0 0",
+      });
 
       // Asignamos el mismo flipId al trigger y al modal para que GSAP los trate como
       // un par "shared element": el modal hereda la posición/forma del trigger al inicio.
@@ -554,6 +816,8 @@ export const useFlipModal = ({
       // tamaño, colores, padding). borderRadius se interpola vía clip-path en
       // un tween separado (ver más abajo), no por FLIP, así que no lo
       // incluimos en props.
+      pinReadableColors([element, modal, ...triggerShared, ...modalShared]);
+
       const state = Flip.getState([element, ...triggerShared], {
         props: "backgroundColor,color,padding",
       });
@@ -576,7 +840,7 @@ export const useFlipModal = ({
         margin,
         fullWidth,
         fullHeight,
-        triggerRect: triggerRef?.rect || rect,
+        triggerRect: rect,
       });
 
       // Colocamos la modal en su posición y tamaño finales.
@@ -608,19 +872,8 @@ export const useFlipModal = ({
       for (const pair of sharedPairs) {
         const sourceRect = pair.source.getBoundingClientRect();
         const targetRect = pair.target.getBoundingClientRect();
-        const fromBR = radiusAsFourCorners(pair.source);
         const toBR = radiusAsFourCorners(pair.target);
-        // Font-size: animamos para que el texto crezca nativo (re-raster en
-        // cada frame) en paralelo al transform: scale del phantom. Sin esto,
-        // el transform escala el texto y queda borroso durante el vuelo.
-        // Solo aplicable a texto (no img).
         const isImage = pair.source.tagName === "IMG";
-        const fromFontSize = isImage
-          ? null
-          : window.getComputedStyle(pair.source).fontSize;
-        const toFontSize = isImage
-          ? null
-          : window.getComputedStyle(pair.target).fontSize;
         // Color del texto: interpolamos del source al target para que la
         // transición de color sea gradual. Solo aplicable a texto (no img).
         const fromColor = isImage
@@ -629,12 +882,17 @@ export const useFlipModal = ({
         const toColor = isImage
           ? null
           : window.getComputedStyle(pair.target).color;
+        const fromWeight = isImage
+          ? null
+          : window.getComputedStyle(pair.source).fontWeight;
+        const toWeight = isImage
+          ? null
+          : window.getComputedStyle(pair.target).fontWeight;
 
-        // Creamos el phantom posicionado sobre el elemento fuente, con la
-        // forma (borderRadius) visible del source. Pasamos el target para
-        // que el phantom use la font y lineHeight del destino desde el
-        // inicio (si no, el texto queda 1-2px corrido durante el vuelo).
-        const phantom = createPhantom(pair.source, sourceRect, pair.target);
+        // El phantom nace montado sobre el DESTINO: la caja, el radio y la
+        // tipografía del shared element dentro de la modal. El viaje se hace
+        // después con transform, desde el rect del source.
+        const phantom = createPhantom(pair.source, targetRect, pair.target);
         phantoms.push({ phantom, pair });
 
         // El target (elemento real dentro de la modal) se mantiene OCULTO
@@ -646,21 +904,16 @@ export const useFlipModal = ({
         pair.target.style.setProperty("visibility", "hidden", "important");
         pair.target.style.setProperty("opacity", "0", "important");
 
-        // Animamos el phantom desde la posición/forma/tamaño del source hasta
-        // los del target. Animamos top/left/width/height (box) + borderRadius
-        // + fontSize + color en paralelo para que el box crezca y el texto
-        // se re-rasterice nativamente en cada frame (crisp, sin blur). Costo
-        // por frame: 1 layout (box) + 1 paint (borderRadius) + 1 layout
-        // (fontSize) + 1 paint (color). Usamos la MISMA duración y la MISMA
-        // curva (MODAL_OPEN_EASE) que el FLIP de apertura del modal, así el
-        // deslizamiento va al mismo ritmo que la apertura.
-        animatePhantom(phantom, sourceRect, targetRect, fromBR, toBR, {
+        // Misma duración y misma curva que el FLIP de apertura: el phantom
+        // llega en el mismo frame en que la caja termina de crecer. Costo por
+        // frame: un transform. Nada de layout.
+        animatePhantom(phantom, sourceRect, targetRect, toBR, {
           duration: MODAL_OPEN_DURATION,
-          ease: MODAL_OPEN_EASE,
-          fromFontSize,
-          toFontSize,
+          ease: MODAL_MORPH_EASE,
           fromColor,
           toColor,
+          fromWeight,
+          toWeight,
         });
       }
 
@@ -790,17 +1043,40 @@ export const useFlipModal = ({
         // El mismo criterio para el width fijo del content, que existe para
         // que el texto no se re-wrapee frame a frame durante la apertura.
         //
-        // Cuando responsive es false dejamos todo pinneado a propósito: es
-        // el camino barato, sin listeners ni relayouts mientras esté abierto.
+        // Cuando responsive es false dejamos el ANCHO pinneado a propósito:
+        // es el camino barato, sin listeners ni relayouts mientras esté
+        // abierto.
         if (responsive) {
           gsap.set(content, { clearProps: "width" });
-          gsap.set(modal, { clearProps: "width,height" });
+          gsap.set(modal, { clearProps: "width" });
         }
+
+        // El ALTO se suelta siempre. Es lo único que el contenido cambia
+        // mientras el modal está abierto: un formulario que pasa de cinco
+        // campos a dos tiene que encogerse, y un `h-screen md:h-auto` que
+        // venga en `styles` tiene que poder ganar. Con un height inline en
+        // píxeles ninguna clase puede: el modal queda clavado en el alto que
+        // midió al abrir y le sobra o le falta caja para siempre.
+        gsap.set(modal, { clearProps: "height" });
 
         gsap.set(modal, {
           willChange: "auto",
           clearProps: "backgroundColor,color,padding",
         });
+
+        // El content vuelve al reparto flex. Aterriza con la misma caja que
+        // tenía congelada, así que soltarlo no reflowea nada visible.
+        gsap.set(content, {
+          clearProps:
+            "filter,opacity,transform,transformOrigin,height,flexGrow,flexShrink,flexBasis",
+        });
+
+        releaseReadableColors([
+          element,
+          modal,
+          ...triggerShared,
+          ...modalShared,
+        ]);
 
         // Con la apertura ya asentada, el drag no tiene nada que terminar.
         // Dejar el ref vivo hacía que el PRIMER drag reaplicara todo este
@@ -828,10 +1104,47 @@ export const useFlipModal = ({
         }),
       );
 
+      // La piel del trigger (su color) se despega en 0.3s mientras la caja
+      // sigue creciendo hasta los 0.7s: la forma de botón se pierde mucho
+      // antes de que el modal termine de llegar a su tamaño.
       tl.fromTo(
         modal,
-        { backgroundColor: window.getComputedStyle(element).backgroundColor },
-        { backgroundColor: finalBg, duration: 0.2, ease: "power1.out" },
+        {
+          backgroundColor: toGsapColor(
+            window.getComputedStyle(element).backgroundColor,
+          ),
+        },
+        {
+          backgroundColor: finalBg,
+          duration: 0.3,
+          ease: MODAL_MORPH_EASE,
+        },
+        0,
+      );
+
+      // LA SEGUNDA CAPA. La caja morfea y el content escala adentro, en X y
+      // en Y por separado, desde la esquina. Sin esto los números de arriba
+      // sólo hacen la apertura más lenta: lo que se lee como "creció" es que
+      // el contenido acompañe la deformación de la caja, no que aparezca
+      // dentro de ella. Entra además desenfocado, como una superficie que
+      // enfoca en vez de un texto que ya estaba puesto.
+      tl.fromTo(
+        content,
+        {
+          scaleX: rect.width / fullWidth,
+          scaleY: rect.height / fullHeight,
+          opacity: 0,
+          filter: `blur(${CONTENT_OPEN_BLUR}px)`,
+        },
+        {
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          filter: "blur(0px)",
+          transformOrigin: "0 0",
+          duration: MODAL_OPEN_DURATION,
+          ease: MODAL_MORPH_EASE,
+        },
         0,
       );
 
@@ -866,7 +1179,11 @@ export const useFlipModal = ({
       if (overlay) {
         tl.to(
           overlay,
-          { backgroundColor: "rgba(0,0,0,0.08)", duration: 0.15 },
+          {
+            backgroundColor: OVERLAY_COLOR,
+            duration: OVERLAY_OPEN_DURATION,
+            ease: overlayTintEase,
+          },
           0,
         );
       }
@@ -897,6 +1214,8 @@ export const useFlipModal = ({
         .querySelectorAll(".shared-element-phantom")
         .forEach((p) => p.remove());
       if (element) {
+        releaseReadableColors([element]);
+
         if (hideTrigger) {
           element.style.removeProperty("opacity");
           element.style.removeProperty("transition");
@@ -917,7 +1236,6 @@ export const useFlipModal = ({
     };
   }, [
     isOpen,
-    triggerRef,
     location,
     modalRef,
     contentRef,
@@ -952,6 +1270,20 @@ export const useFlipModal = ({
       // Si ya hay una animación de cierre en curso, ignoramos el click
       if (modal.dataset.closing === "true") return;
       modal.dataset.closing = "true";
+      isClosingRef.current = true;
+
+      // `cleanup` puede llegar por tres caminos (onComplete, onInterrupt y el
+      // asentamiento desde una apertura nueva), así que corre una sola vez.
+      let closeSettled = false;
+      let suppressOnClose = false;
+
+      // La página vuelve a ser clickeable EN EL MISMO FRAME en que arranca el
+      // cierre, no cuando termina. El overlay es un `fixed inset-0` que sigue
+      // montado durante toda la animación: sin esto se traga cada click de
+      // los 0.5s que dura el cierre y se siente como que la interfaz quedó
+      // trabada. El modal también, para que un segundo click no reentre acá.
+      if (overlay) gsap.set(overlay, { pointerEvents: "none" });
+      gsap.set(modal, { pointerEvents: "none" });
 
       // Matamos tweens activos para evitar conflictos si el usuario cierra durante una apertura
       gsap.killTweensOf([modal, content, overlay, element]);
@@ -966,11 +1298,38 @@ export const useFlipModal = ({
       // único movimiento de "la modal se encoge y el botón aparece", no
       // como dos cosas compitiendo.
       if (hideTrigger) {
+        // El open ocultó el trigger con opacity 0 !important: un tween normal
+        // jamás lo pisa, así que primero liberamos los !important, pinneamos
+        // en 0 y recién ahí tuneamos a 1 con el delay del crossfade.
+        element.style.removeProperty("opacity");
+        // La transicion inline sigue pinneada en `none` durante todo el
+        // restore, y NO se libera aca. El disparador suele traer
+        // `transition-all duration-200` en su clase: con esa transicion viva,
+        // cada valor de opacidad que GSAP escribe frame a frame queda atrapado
+        // en sus 200ms, asi que el boton va siempre atrasado respecto del
+        // tween y todavia no llego a 1 cuando el tween ya termino. La
+        // diferencia se salda de golpe en el ultimo frame — ese es el brinco
+        // que quedaba. Mientras GSAP sea dueno de la opacidad, el CSS no
+        // opina. Es la misma precaucion que ya toma createPhantom con el clon.
+        gsap.set(element, { opacity: 0 });
+        // power1.inOut y no power2.out: un ease-out sobre una opacidad 0 -> 1
+        // esta cargado al principio (la mitad del fade se resuelve en el
+        // primer quinto), asi que el boton irrumpe y despues se arrastra. Eso
+        // es exactamente lo que se veia como "sale de repente".
         gsap.to(element, {
           opacity: 1,
-          duration: 0.23,
-          ease: "power2.out",
-          delay: 0.12,
+          duration: TRIGGER_RESTORE_DURATION,
+          ease: "power1.inOut",
+          delay: TRIGGER_RESTORE_DELAY,
+          onComplete: () => {
+            gsap.set(element, { clearProps: "opacity" });
+            // La transicion vuelve un frame despues de soltar la opacidad. En
+            // el mismo frame, el paso de opacidad inline a la computada
+            // volveria a viajar por esos 200ms y reintroduciria el brinco.
+            requestAnimationFrame(() =>
+              element.style.removeProperty("transition"),
+            );
+          },
         });
       }
 
@@ -1067,20 +1426,29 @@ export const useFlipModal = ({
           targetRect.left < window.innerWidth;
         if (!isOnScreen) continue;
 
-        // Creamos el phantom posicionado sobre el elemento en la modal, con la
-        // forma (borderRadius) visible del target. Pasamos el source (que es
-        // el "destino" del cierre) para que el phantom use la font y
-        // lineHeight del botón desde el inicio del viaje de vuelta.
-        const phantom = createPhantom(pair.target, targetRect, pair.source);
-        const fromBR = radiusAsFourCorners(pair.target);
+        // El phantom nace montado sobre el DESTINO del viaje — el shared
+        // element del trigger — con su caja, su radio y su tipografía. De ahí
+        // sale volando hacia atrás con un transform. Guardamos el rect del
+        // target porque es el punto de partida y el phantom ya no está ahí.
+        const phantom = createPhantom(
+          pair.target,
+          pair.source.getBoundingClientRect(),
+          pair.source,
+        );
         const isImage = pair.target.tagName === "IMG";
-        const fromFontSize = isImage
-          ? null
-          : window.getComputedStyle(pair.target).fontSize;
         const fromColor = isImage
           ? null
           : window.getComputedStyle(pair.target).color;
-        closePhantoms.push({ phantom, pair, fromBR, fromFontSize, fromColor });
+        const fromWeight = isImage
+          ? null
+          : window.getComputedStyle(pair.target).fontWeight;
+        closePhantoms.push({
+          phantom,
+          pair,
+          targetRect,
+          fromColor,
+          fromWeight,
+        });
 
         // Magia del shared element: ocultamos el target visualmente pero
         // SIN sacarlo del flow (display:none causa layout shift — los
@@ -1105,12 +1473,20 @@ export const useFlipModal = ({
       // esto, el content (position:absolute con dimensiones fijas) se
       // recorta por el overflow:hidden de la modal mientras se encoge con
       // FLIP → el texto se ve "rodando" durante la animación.
-      const fadeTargets = collectFadeTargets(content);
-      gsap.set(fadeTargets, { willChange: "opacity, transform" });
+      gsap.set(content, { willChange: "opacity, filter, transform" });
+
+      pinReadableColors([element, modal, ...modalShared]);
 
       // Aqui capturamos los estilos actuales del modal abierto.
+      // El borde y la sombra viajan con la caja. Sin ellos, el ultimo frame
+      // del cierre es una pastilla con sombra y sin borde parada encima de un
+      // boton con borde y sin sombra: al retirar la modal las dos diferencias
+      // aparecen juntas, y eso es el salto. La caja tiene que ATERRIZAR ya
+      // vestida de boton para que sacarla no cambie nada.
+      const modalShadow = window.getComputedStyle(modal).boxShadow;
+
       const state = Flip.getState([modal, ...modalShared], {
-        props: "backgroundColor,color,padding",
+        props: "backgroundColor,color,padding,boxShadow,borderWidth,borderColor",
       });
 
       // Prevención extra por si element fue liberado entre líneas
@@ -1153,6 +1529,19 @@ export const useFlipModal = ({
         height: triggerRect.height,
         padding: triggerStyles.padding,
         color: triggerStyles.color,
+        boxShadow: matchedShadow(modalShadow, triggerStyles.boxShadow),
+        // El estilo se fuerza a solid en los dos extremos para que lo unico
+        // que cambie sea el ancho: `none` no es un valor intermedio, asi que
+        // un borde que nace o muere cambiando de estilo salta en vez de
+        // crecer. Con ancho 0 el borde es invisible igual.
+        borderStyle: "solid",
+        borderWidth: triggerStyles.borderTopWidth,
+        borderColor: toGsapColor(triggerStyles.borderTopColor),
+        // El fondo tiene que viajar al del disparador o la caja aterriza
+        // blanca encima del botón y se ve un destello justo cuando el
+        // trigger está reapareciendo. El Flip lo interpola solo: capturó el
+        // color del modal abierto y acá le fijamos el destino.
+        backgroundColor: toGsapColor(triggerStyles.backgroundColor),
         overflow: "hidden",
         margin: 0,
       });
@@ -1160,43 +1549,36 @@ export const useFlipModal = ({
       // Reactivamos aceleración GPU solo en el modal para la animación de cierre.
       gsap.set(modal, { force3D: true, willChange: "transform" });
 
-      // Ahora que calculamos las posiciones finales del trigger, animamos los phantoms de vuelta.
-      // Animamos top/left/width/height (box) + borderRadius + fontSize + color
-      // en paralelo para que el box se encoja y el texto se re-rasterice
-      // nativamente en cada frame (crisp, sin blur).
+      // Ahora que calculamos las posiciones finales del trigger, animamos los
+      // phantoms de vuelta. El punto de partida es el rect que el shared
+      // element tenía dentro de la modal; el de llegada, el del trigger.
       for (const {
         phantom,
         pair,
-        fromBR,
-        fromFontSize,
+        targetRect,
         fromColor,
+        fromWeight,
       } of closePhantoms) {
-        const currentRect = {
-          top: parseFloat(phantom.style.top),
-          left: parseFloat(phantom.style.left),
-          width: parseFloat(phantom.style.width),
-          height: parseFloat(phantom.style.height),
-        };
         const sourceRect = pair.source.getBoundingClientRect();
         const toBR = radiusAsFourCorners(pair.source);
         const isImage = pair.source.tagName === "IMG";
-        const toFontSize = isImage
-          ? null
-          : window.getComputedStyle(pair.source).fontSize;
         const toColor = isImage
           ? null
           : window.getComputedStyle(pair.source).color;
+        const toWeight = isImage
+          ? null
+          : window.getComputedStyle(pair.source).fontWeight;
 
-        // Misma duración y misma curva (power2.inOut) que el FLIP de cierre.
-        // power2.inOut es más natural que sine.inOut (sine se siente
-        // "flotando" al final) y menos agresivo que power4 — el sweet spot.
-        animatePhantom(phantom, currentRect, sourceRect, fromBR, toBR, {
-          duration: 0.3,
-          ease: "power2.inOut",
-          fromFontSize,
-          toFontSize,
+        // Misma duración y misma curva que el FLIP de cierre: el phantom
+        // tiene que llegar al trigger en el mismo frame que la caja, o el
+        // desfasaje se lee como un brinco y no como un morph.
+        animatePhantom(phantom, targetRect, sourceRect, toBR, {
+          duration: MODAL_CLOSE_DURATION,
+          ease: MODAL_MORPH_EASE,
           fromColor,
           toColor,
+          fromWeight,
+          toWeight,
         });
       }
 
@@ -1204,7 +1586,15 @@ export const useFlipModal = ({
       // Elimina los overrides de min-height, restaura el trigger y llama a onClose
       // para que React desmonte el modal del DOM.
       function cleanup() {
+        if (closeSettled) return;
+        closeSettled = true;
         delete modal.dataset.closing;
+        // El nodo puede sobrevivir al cierre (hay modales que se quedan
+        // montadas con isOpen=false), así que devolvemos los eventos o la
+        // próxima apertura nacería sin poder recibir clicks.
+        gsap.set(modal, { clearProps: "pointerEvents" });
+        if (overlay) gsap.set(overlay, { clearProps: "pointerEvents" });
+        releaseReadableColors([element, modal, ...modalShared]);
         modal.style.removeProperty("min-height");
         modal.style.removeProperty("min-width");
         // Limpiamos los inline de width/height/top/left/position que el
@@ -1221,6 +1611,13 @@ export const useFlipModal = ({
         modal.style.removeProperty("top");
         modal.style.removeProperty("left");
         modal.style.removeProperty("position");
+        // Y el padding/colores que el cierre le copió del disparador. Si el
+        // nodo sobrevive al cierre y los dejamos puestos, la próxima apertura
+        // mide su alto con el padding del botón.
+        gsap.set(modal, {
+          clearProps:
+            "padding,backgroundColor,color,boxShadow,borderWidth,borderColor,borderStyle",
+        });
         // Mantenemos el modal invisible hasta que React lo desmonte.
         // Sin esto, hay un frame donde el modal (sin position:fixed ni
         // dimensions inline) se renderiza en su posición natural (top-left)
@@ -1238,8 +1635,7 @@ export const useFlipModal = ({
         modal.style.setProperty("display", "none", "important");
         gsap.set(modal, { willChange: "auto" });
         // Restauramos la visibilidad del content que desvanecimos durante
-        // el viaje de los phantoms de cierre. Reusamos la misma lista
-        // (fadeTargets) que animamos para no volver a hacer un walk de "*".
+        // el viaje de los phantoms de cierre.
         content.style.removeProperty("visibility");
         // Deshacemos la conversión scroll -> transform y la caja congelada.
         // El nodo del modal sobrevive al cierre (siempre se rendera por el
@@ -1247,14 +1643,14 @@ export const useFlipModal = ({
         // próxima apertura arrancaría con el content desplazado y fuera
         // del reparto flex.
         gsap.set(scrolledChildren, { clearProps: "transform,x,y" });
+        // La deriva del content dura 2s y el cierre termina a los 0.5s: si no
+        // la matamos acá sigue escribiendo transforms sobre un modal ya
+        // cerrado y la próxima apertura arranca con el content encogido.
+        gsap.killTweensOf(content);
         gsap.set(content, {
-          clearProps: "flexGrow,flexShrink,flexBasis,width,height,overflow",
+          clearProps:
+            "flexGrow,flexShrink,flexBasis,width,height,overflow,opacity,filter,transform,transformOrigin,willChange",
         });
-        for (const el of fadeTargets) {
-          gsap.set(el, {
-            clearProps: "opacity,transform,scale,willChange",
-          });
-        }
         // Restauramos clip-path y visibility de los targets que clippeamos
         // para la "magia" del shared element — si no, al re-abrir la modal
         // siguiente el span con data-shared-id arrancaría invisible.
@@ -1343,56 +1739,107 @@ export const useFlipModal = ({
             if (pair.source) pair.source.style.transition = prevTransition;
           });
         }
-        onClose();
+
+        // Este cierre ya no tiene nada que asentar. Sin esto el ref queda
+        // vivo con el timeline viejo y la PRÓXIMA apertura lo invoca:
+        // `tl.progress(1)` reaplica los valores finales de un cierre que ya
+        // pasó (modal en opacity 0, encogido al botón) justo cuando la
+        // apertura estaba montando el suyo.
+        settleCloseRef.current = null;
+
+        // El flag se libera un frame DESPUÉS de limpiar. Los clearProps de
+        // acá arriba devuelven el modal a su tamaño natural, y ese cambio
+        // dispara el ResizeObserver del reposicionamiento: si el flag ya
+        // estuviera en false, esa pasada escribiría un top/left calculado
+        // sobre un modal que está en display:none (offsetWidth 0).
+        requestAnimationFrame(() => {
+          isClosingRef.current = false;
+        });
+
+        // Si el usuario reabrió mientras esto cerraba, el estado ya lo tomó
+        // la apertura nueva: llamar a onClose acá la desmontaría de vuelta.
+        // Es exactamente lo que se veía como "no puedo reabrir la modal".
+        if (!suppressOnClose) onClose();
       }
 
       // Timeline del cierre. onInterrupt garantiza que se aplique la funcion cleanup aunque el usuario
       // interrumpa la animación antes de que termine
       const tl = gsap.timeline({ onComplete: cleanup, onInterrupt: cleanup });
 
-      // Desvanecemos el overlay en paralelo con el cierre del modal
+      // Puente para que una apertura pueda ASENTAR este cierre de golpe en
+      // vez de esperarlo. Sin esto, reabrir durante el medio segundo del
+      // cierre no funciona: la apertura monta la modal y el cierre, al
+      // terminar, llama a onClose y la vuelve a desmontar.
+      settleCloseRef.current = () => {
+        suppressOnClose = true;
+        tl.progress(1);
+        cleanup();
+        settleCloseRef.current = null;
+      };
+
+      // El overlay se apaga con la misma duración que la caja pero con
+      // power3.in: se queda casi opaco hasta el final y recién ahí cae.
+      // Por eso el cierre no se lee como un rebobinado — el fondo todavía
+      // se está asentando cuando la caja ya llegó al trigger.
       if (overlay) {
         tl.to(
           overlay,
           {
             backgroundColor: "rgba(0,0,0,0)",
-            duration: 0.28,
-            ease: "power1.inOut",
+            duration: MODAL_CLOSE_DURATION,
+            ease: "power3.in",
           },
           0,
         );
       }
 
-      // Aqui animamos la modal desde su estado grande o abierto capturandolo con state
-      // hasta el estado del trigger. power2.inOut — sweet spot entre
-      // sine.inOut (se siente flotando al final) y power4 (muy agresivo).
+      // La caja vuelve al trigger con la MISMA curva que usó para salir,
+      // pero en 0.5s en vez de 0.7s. Los extremos coinciden, las curvas no:
+      // el cierre es más corto y el contenido se va antes que la caja.
+      // Al animar backgroundColor la caja aterriza con el color del botón,
+      // que es lo que vende que la modal se volvió el trigger.
       tl.add(
         Flip.from(state, {
           targets: [modal, ...modalShared],
           nested: true,
-          duration: 0.3,
-          ease: "power2.inOut",
+          duration: MODAL_CLOSE_DURATION,
+          ease: MODAL_MORPH_EASE,
           props: "backgroundColor,color,padding",
         }),
         0,
       );
 
-      // Fade + scale sutil que reemplaza al blur original. El scale a 0.94
-      // simula el "colapso hacia la modal" que antes daba la sensación de
-      // difuminado. Arranca inmediato (t=0) para que el contenido empiece a
-      // desvanecerse a la par que el FLIP encoge la modal, y termina antes
-      // de que la modal llegue al trigger para que no haya contenido visible
-      // al tamaño del botón. Ambas propiedades son composite-only.
+      // El contenido se disuelve con el desenfoque grande de una superficie
+      // completa. Un solo nodo en vez de las ramas sueltas: al animarlo
+      // entero se crea UNA capa de compositing y no una por rama.
       tl.to(
-        fadeTargets,
+        content,
         {
           opacity: 0,
-          scale: 0.94,
-          duration: 0.22,
-          ease: "power2.out",
+          filter: `blur(${CONTENT_CLOSE_BLUR}px)`,
+          duration: MODAL_CLOSE_DURATION,
+          ease: MODAL_CLOSE_BLUR_EASE,
         },
         0,
       );
+
+      // El content encoge con una duración mucho más larga que la caja: a
+      // los 0.5s recorrió apenas un cuarto del camino, así que queda casi a
+      // tamaño real y es la caja la que lo recorta al irse. Eso es lo que se
+      // lee como "la caja se cerró encima" y no como una foto que se chupa
+      // al botón.
+      //
+      // Va FUERA del timeline a propósito. Adentro, sus 2s pasaban a ser la
+      // duración del timeline entero y `onComplete: cleanup` disparaba recién
+      // ahí: la modal no se desmontaba, el trigger quedaba con los inline del
+      // cierre y la reapertura arrancaba rota. Lo mata `cleanup`.
+      gsap.to(content, {
+        scaleX: triggerRect.width / modalCurrentRect.width,
+        scaleY: triggerRect.height / modalCurrentRect.height,
+        transformOrigin: "0 0",
+        duration: CONTENT_CLOSE_DRIFT_DURATION,
+        ease: MODAL_MORPH_EASE,
+      });
 
       // Ajustamos el borderRadius gradualmente para que al final coincida con el del trigger.
       // clip-path en vez de borderRadius: GPU-compositable, sin paint.
@@ -1400,22 +1847,28 @@ export const useFlipModal = ({
         modal,
         {
           clipPath: `inset(0 round ${triggerStyles.borderRadius})`,
-          duration: 0.26,
-          ease: "power2.inOut",
+          duration: MODAL_CLOSE_DURATION,
+          ease: MODAL_CLOSE_SHAPE_EASE,
         },
-        0.04,
+        0,
       );
 
-      // El modal hace fade out para que cuando llegue al tamaño del
-      // trigger (al final del FLIP, t=0.3s) ya sea totalmente invisible.
-      // Antes el fade arrancaba a 0.24s con duration 0.05s (terminaba a
-      // 0.29s), pero a 0.29s el FLIP ya estaba al ~97% del tamaño del
-      // trigger y el modal aún tenía opacidad > 0 → se veía "salir" con
-      // el tamaño del trigger antes de que el FLIP terminara. Ahora el
-      // fade arranca a 0.12s y termina a 0.22s: el modal es invisible
-      // durante el último ~25% del FLIP, así nunca se ve al tamaño del
-      // trigger con opacidad visible.
-      tl.to(modal, { opacity: 0, duration: 0.1, ease: "power2.in" }, 0.12);
+      // La caja NO se desvanece durante el viaje: tiene que llegar entera,
+      // con el color y el radio del botón, porque ese aterrizaje es el que
+      // se lee como "la modal se volvió el trigger". Recién en el último
+      // cuarto se apaga, cruzándose con el trigger que ya está apareciendo
+      // (TRIGGER_RESTORE_DELAY + TRIGGER_RESTORE_DURATION terminan en el
+      // mismo frame). Es una fracción del cierre y no un valor fijo: con un
+      // cierre corto, 0.12s absolutos se comían un tercio del viaje.
+      tl.to(
+        modal,
+        {
+          opacity: 0,
+          duration: MODAL_CLOSE_DURATION * 0.24,
+          ease: "power2.in",
+        },
+        MODAL_CLOSE_DURATION * 0.76,
+      );
     },
     [onClose, triggerRef, modalRef, contentRef, overlayRef, id, hideTrigger],
   );
@@ -1471,9 +1924,6 @@ export const useFlipModal = ({
   // borde de la ventana, y cada pasada hace lectura de layout. Con el rAF
   // colapsamos todas las que caen en el mismo frame en una sola.
   useEffect(() => {
-    // Opt-in: sin responsive no montamos el listener. Un modal no-responsive
-    // no paga NADA por esta feature — ni el handler ni las lecturas de layout.
-    if (!responsive) return;
     if (!isOpen) return;
     const modal = modalRef.current;
     if (!modal) return;
@@ -1486,6 +1936,19 @@ export const useFlipModal = ({
       // animando top/left en este preciso instante y pisarlo produce un
       // salto. Al terminar, el modal ya queda con la geometría correcta.
       if (settleOpenRef.current) return;
+
+      // Y lo mismo con el cierre, que es donde más se notaba: el FLIP encoge
+      // el modal hasta la caja del botón animando width/height inline, así
+      // que el ResizeObserver de acá abajo dispara en CADA frame del vuelo.
+      // El cierre ancla el modal con top/left = rect del trigger y deja que
+      // el FLIP haga el viaje con un transform que termina en cero — o sea
+      // que el top/left inline ES el destino. Reposicionar durante el vuelo
+      // lo reescribía con una posición recalculada a partir del tamaño
+      // intermedio (y del clamping contra los bordes), y como el transform
+      // igual terminaba en cero, el modal aterrizaba donde lo hubiera dejado
+      // el ÚLTIMO frame del observer en vez de sobre el botón. Eso es lo que
+      // se veía como "la modal cierra en un lugar random".
+      if (isClosingRef.current) return;
 
       const element = triggerRef?.element || triggerRef?.current;
       const { left, top } = computeModalPosition({
@@ -1508,8 +1971,30 @@ export const useFlipModal = ({
       raf = requestAnimationFrame(reposition);
     };
 
-    window.addEventListener("resize", onResize);
+    // El alto lo maneja el CSS, así que el modal cambia de tamaño solo cuando
+    // cambia su contenido — un formulario que pasa de cinco campos a dos. Si
+    // no lo re-anclamos, un modal centrado se queda colgado del top viejo y
+    // encoge sólo desde abajo.
+    //
+    // El observer dispara una vez apenas se llama a observe(): esa primera
+    // pasada la descartamos, porque no describe ningún cambio real y llegaría
+    // mientras la apertura todavía está en vuelo.
+    let firstObservation = true;
+    const observer = new ResizeObserver(() => {
+      if (firstObservation) {
+        firstObservation = false;
+        return;
+      }
+      onResize();
+    });
+    observer.observe(modal);
+
+    // Opt-in: sin responsive no escuchamos el resize de la ventana. Ese
+    // camino recalcula además el ancho y es el que cuesta.
+    if (responsive) window.addEventListener("resize", onResize);
+
     return () => {
+      observer.disconnect();
       window.removeEventListener("resize", onResize);
       if (raf !== null) cancelAnimationFrame(raf);
     };

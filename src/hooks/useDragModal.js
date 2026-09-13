@@ -17,9 +17,20 @@ const MIN_SCALE = 0.88; // escala mínima (12% de encogimiento)
 const SCROLL_EDGE_TOLERANCE = 1; // px
 
 /**
+ * Un elemento scrollea verticalmente DE VERDAD si declara overflow-y
+ * auto/scroll Y su contenido desborda. Las dos condiciones importan:
+ * overflow-y-auto sin desborde no scrollea nada.
+ */
+function isVerticalScroller(node) {
+  if (node.scrollHeight - node.clientHeight <= SCROLL_EDGE_TOLERANCE)
+    return false;
+  const overflowY = window.getComputedStyle(node).overflowY;
+  return overflowY === "auto" || overflowY === "scroll";
+}
+
+/**
  * Sube desde `start` hasta `boundary` (inclusive) buscando el primer
- * ancestro que scrollee verticalmente de verdad: que tenga overflow-y
- * auto/scroll Y contenido que desborde. Devuelve null si no hay ninguno.
+ * ancestro que scrollee verticalmente. Devuelve null si no hay ninguno.
  *
  * Necesitamos el elemento REAL (no asumir que es el content del modal)
  * porque el drag puede arrancar sobre un scroller anidado, y en ese caso
@@ -28,10 +39,7 @@ const SCROLL_EDGE_TOLERANCE = 1; // px
 function findVerticalScroller(start, boundary) {
   let node = start instanceof Element ? start : start?.parentElement;
   while (node) {
-    if (node.scrollHeight - node.clientHeight > SCROLL_EDGE_TOLERANCE) {
-      const overflowY = window.getComputedStyle(node).overflowY;
-      if (overflowY === "auto" || overflowY === "scroll") return node;
-    }
+    if (isVerticalScroller(node)) return node;
     if (node === boundary) break;
     node = node.parentElement;
   }
@@ -85,6 +93,27 @@ function findVerticalScroller(start, boundary) {
  * Usamos Pointer Events (no touch/mouse por separado) para tener un
  * único código que cubre mouse, touch y pen. setPointerCapture asegura
  * que los eventos siguen llegando aunque el pointer se salga del modal.
+ *
+ * TOUCH-ACTION (por qué sin esto el drag NO existe en mobile):
+ * En touch el browser decide si el gesto es scroll antes de que nuestros
+ * pointermove crucen DRAG_START_THRESHOLD: apenas el dedo supera su
+ * propio slop se queda con el gesto y nos manda pointercancel, así que
+ * `started` nunca llegaba a true. Ningún preventDefault lo evita — una
+ * vez que el browser empezó a pannear, el pointermove llega con
+ * cancelable:false. Lo único que decide esto es el CSS touch-action, y
+ * por eso lo aplicamos desde acá (ver applyTouchAction en el effect):
+ *
+ *   - raíz del modal → touch-action: none. Ningún pan nativo nos roba el
+ *     gesto y el drag se comporta igual que con mouse.
+ *   - scrollers internos que hoy desbordan → touch-action: pan-y +
+ *     overscroll-behavior-y: contain. El dedo vertical sigue scrolleando
+ *     nativo (con inercia, que a mano no se replica), el arbitraje de
+ *     arriba mantiene su criterio, y `contain` corta el scroll chaining
+ *     para que en el borde el gesto vuelva a ser del drag.
+ *
+ * Solo marcamos los que desbordan de verdad: uno con overflow-y-auto sin
+ * desborde no scrollea nada, y dejarlo en `none` hace que el drag arranque
+ * ahí sin depender de cómo cada browser resuelve un pan sin recorrido.
  */
 export const useDragModal = ({
   isOpen,
@@ -123,6 +152,61 @@ export const useDragModal = ({
     if (!isOpen) return;
     const modal = modalRef.current;
     if (!modal) return;
+
+    // ── TOUCH-ACTION: quién es dueño del gesto en touch ──
+    // Guardamos el inline style previo de cada elemento que pisamos para
+    // devolverlo tal cual en el cleanup: el hook es opt-in y no puede
+    // dejar rastro en modales que se cierran y se reabren.
+    const patched = new Map();
+
+    const applyTouchAction = (el, touchAction, overscrollBehaviorY = "") => {
+      if (patched.has(el)) return;
+      patched.set(el, {
+        touchAction: el.style.touchAction,
+        overscrollBehaviorY: el.style.overscrollBehaviorY,
+      });
+      el.style.touchAction = touchAction;
+      if (overscrollBehaviorY)
+        el.style.overscrollBehaviorY = overscrollBehaviorY;
+    };
+
+    const restoreTouchAction = (el) => {
+      const previous = patched.get(el);
+      if (!previous) return;
+      el.style.touchAction = previous.touchAction;
+      el.style.overscrollBehaviorY = previous.overscrollBehaviorY;
+      patched.delete(el);
+    };
+
+    const syncScrollers = () => {
+      // Un scroller que se fue del DOM o que dejó de desbordar vuelve a
+      // ser zona de drag: le devolvemos el touch-action: none heredado.
+      for (const el of [...patched.keys()]) {
+        if (el === modal) continue;
+        if (!modal.contains(el) || !isVerticalScroller(el))
+          restoreTouchAction(el);
+      }
+      for (const el of modal.querySelectorAll("*")) {
+        if (isVerticalScroller(el)) applyTouchAction(el, "pan-y", "contain");
+      }
+    };
+
+    applyTouchAction(modal, "none");
+    syncScrollers();
+
+    // El contenido del modal cambia en vivo — un SelectMenu que se abre,
+    // una lista que termina de cargar — y cada cambio puede crear o
+    // eliminar un scroller. Reescaneamos por mutación, agrupado en un rAF
+    // para no releer estilos computados varias veces por frame.
+    let rescanFrame = 0;
+    const observer = new MutationObserver(() => {
+      if (rescanFrame) return;
+      rescanFrame = requestAnimationFrame(() => {
+        rescanFrame = 0;
+        syncScrollers();
+      });
+    });
+    observer.observe(modal, { childList: true, subtree: true });
 
     let drag = null;
 
@@ -234,8 +318,9 @@ export const useDragModal = ({
         drag.baseY = Number(gsap.getProperty(modal, "y")) || 0;
       }
 
-      // preventDefault evita selección de texto con mouse y prevención
-      // de gestos default del browser durante el drag.
+      // Evita la selección de texto mientras se arrastra con mouse. Para
+      // el scroll táctil no sirve de nada: eso ya lo resolvió el
+      // touch-action de arriba, acá el evento llega con cancelable:false.
       if (e.cancelable) e.preventDefault();
 
       // Total displacement = base (donde el modal estaba al empezar el
@@ -327,6 +412,9 @@ export const useDragModal = ({
       modal.removeEventListener("pointerup", onPointerUp);
       modal.removeEventListener("pointercancel", onPointerUp);
       modal.removeEventListener("dragstart", onDragStart);
+      observer.disconnect();
+      if (rescanFrame) cancelAnimationFrame(rescanFrame);
+      for (const el of [...patched.keys()]) restoreTouchAction(el);
     };
   }, [dragToClose, isOpen, modalRef]);
 };
