@@ -16,6 +16,15 @@ const MIN_SCALE = 0.88; // escala mínima (12% de encogimiento)
 // comparar con igualdad exacta falla justo en el borde.
 const SCROLL_EDGE_TOLERANCE = 1; // px
 
+// Esquinas de fallback para modales sin radio propio: rounded-3xl
+// (1.5rem = 24px en el tema de Tailwind). Cuatro esquinas explícitas
+// para matchear el formato de radiusAsFourCorners (useFlipModal) y que
+// el tween de cierre interpole número contra número.
+const DRAG_FALLBACK_RADIUS = "24px 24px 24px 24px";
+// El clip-path que el FLIP de apertura deja en una modal sin radio: a
+// este valor vuelve el clip-path cuando el spring-back termina.
+const NO_RADIUS_CLIP_PATH = "inset(0 round 0px 0px 0px 0px)";
+
 /**
  * Un elemento scrollea verticalmente DE VERDAD si declara overflow-y
  * auto/scroll Y su contenido desborda. Las dos condiciones importan:
@@ -208,6 +217,30 @@ export const useDragModal = ({
     });
     observer.observe(modal, { childList: true, subtree: true });
 
+    // ── ESQUINAS REDONDAS DURANTE EL DRAG ──
+    // El radio visible de la modal vive en el clip-path inline que
+    // escribe el FLIP de apertura (inset(0 round …)), no en
+    // border-radius: si la modal no tiene radio, ese clip-path recorta
+    // las esquinas a cero y un border-radius agregado no llegaría a
+    // verse. Por eso el fallback se aplica sobre el clip-path. Si la
+    // modal ya tiene radio no tocamos nada — mientras se arrastra ya se
+    // ve el suyo.
+    let dragRounded = false;
+
+    const applyDragRadius = () => {
+      if (dragRounded) return;
+      const cs = window.getComputedStyle(modal);
+      const hasRadius = [
+        cs.borderTopLeftRadius,
+        cs.borderTopRightRadius,
+        cs.borderBottomRightRadius,
+        cs.borderBottomLeftRadius,
+      ].some((value) => parseFloat(value) > 0);
+      if (hasRadius) return;
+      modal.style.clipPath = `inset(0 round ${DRAG_FALLBACK_RADIUS})`;
+      dragRounded = true;
+    };
+
     let drag = null;
 
     const onPointerDown = (e) => {
@@ -304,6 +337,9 @@ export const useDragModal = ({
         // spring-back previo que todavía no terminó). Sin esto el drag
         // "compite" con el tween y el modal tembla.
         gsap.killTweensOf(modal);
+        // Con el modal quieto y sin tweens vivos que pisen el clip-path,
+        // recién acá redondeamos las esquinas si la modal no tiene radio.
+        applyDragRadius();
         // Capturamos la posición ACTUAL del modal (leída de GSAP, así
         // respeta cualquier tween que estuviera corriendo hasta el
         // frame anterior) como base para sumar el dx/dy del drag.
@@ -380,13 +416,22 @@ export const useDragModal = ({
         // ruidoso — se siente responsive sin "rebote de goma".
         // Reseteamos también scale porque el drag la achicó — sin esto
         // la modal se queda encogida después del release.
-        gsap.to(modal, {
+        const springBack = {
           x: 0,
           y: 0,
           scale: 1,
           duration: 0.3,
           ease: "power3.out",
-        });
+          onComplete: () => {
+            dragRounded = false;
+          },
+        };
+        // Si el fallback de esquinas está activo, el clip-path vuelve a
+        // cero dentro del mismo tween: removerlo de un solo saque haría
+        // que las esquinas salten a cuadradas justo cuando la modal
+        // aterriza.
+        if (dragRounded) springBack.clipPath = NO_RADIUS_CLIP_PATH;
+        gsap.to(modal, springBack);
       }
     };
 
