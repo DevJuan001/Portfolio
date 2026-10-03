@@ -1486,7 +1486,8 @@ export const useFlipModal = ({
       const modalShadow = window.getComputedStyle(modal).boxShadow;
 
       const state = Flip.getState([modal, ...modalShared], {
-        props: "backgroundColor,color,padding,boxShadow,borderWidth,borderColor",
+        props:
+          "backgroundColor,color,padding,boxShadow,borderWidth,borderColor",
       });
 
       // Prevención extra por si element fue liberado entre líneas
