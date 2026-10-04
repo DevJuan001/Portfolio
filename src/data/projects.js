@@ -130,10 +130,10 @@ export const projects = [
           Sirve para detectar consultas lentas y límites de conexiones antes de que aparezcan en producción, no después.`,
       },
     ],
-    images: [
-      "/projects/tracklinker-1.png",
-      "/projects/tracklinker-2.png",
-      "/projects/tracklinker-3.png",
+    media: [
+      { image: "/projects/tracklinker/tracklinker-1.webp", caption: "" },
+      { image: "/projects/tracklinker/tracklinker-2.png", caption: "" },
+      { image: "/projects/tracklinker/tracklinker-3.png", caption: "" },
     ],
     github: "https://github.com/DevJuan001/Tracklinker-frontend-web",
     alt: "Proyecto tracklinker",
@@ -271,10 +271,14 @@ export const projects = [
     ],
     link: "https://parking-hackathon-frontend.onrender.com/",
     github: "https://github.com/DevJuan001/parking-hackathon-backend",
-    images: [
-      "projects/parking-1.png",
-      "projects/parking-2.png",
-      "projects/parking-3.png",
+    media: [
+      { image: "projects/parking/parking-1.webp" },
+      { image: "projects/parking/parking-2.webp" },
+      {
+        video: "projects/parking/parking-3.mp4",
+        caption: "Reservas al día, de un vistazo",
+        position: "bottom",
+      },
     ],
     alt: "Proyecto parking",
     stack: ["Python", "FastAPI", "Redis", "React", "Tailwind", "Tanstack"],
