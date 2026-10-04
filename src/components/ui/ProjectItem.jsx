@@ -22,8 +22,8 @@ export default function ProjectItem({ project, reversed = false }) {
     >
       <img
         data-shared-id="project-main-image"
-        src={project.images[0]}
-        alt={project.alt}
+        src={project.media[0].image}
+        alt={project.media[0].alt}
         width={1919}
         height={1078}
         className="w-full rounded-[22px] object-cover
