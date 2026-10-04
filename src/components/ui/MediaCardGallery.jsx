@@ -114,7 +114,7 @@ export default function MediaCardGallery({
                     ? "min-w-0 flex-1 rounded-2xl object-cover"
                     : card.imagePosition === "top"
                       ? "min-h-0 w-full max-w-3xl flex-1 rounded-b-2xl object-cover"
-                      : "min-h-0 w-full max-w-3xl flex-1 rounded-t-xl object-cover"
+                      : "min-h-0 w-full max-w-3xl flex-1 rounded-t-lg object-cover"
                   : "h-full w-full rounded-3xl object-cover"
               }
             />
