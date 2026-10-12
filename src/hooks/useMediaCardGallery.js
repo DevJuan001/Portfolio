@@ -58,6 +58,7 @@ export function useMediaCardGallery({ cards, revealCards = true }) {
     prefersReducedMotion() ? "paused" : "playing",
   );
   const [isInView, setIsInView] = useState(false);
+  const [videoDuration, setVideoDuration] = useState(null);
 
   const scrollerRef = useRef(null);
   const dotListRef = useRef(null);
@@ -69,6 +70,24 @@ export function useMediaCardGallery({ cards, revealCards = true }) {
   const registerCard = (index) => (node) => {
     cardsRef.current[index] = node;
   };
+
+  useLayoutEffect(() => {
+    const video = cardsRef.current[current]?.querySelector("video");
+    if (!video) {
+      setVideoDuration(null);
+      return;
+    }
+
+    const handleMetadata = () =>
+      setVideoDuration(
+        Number.isFinite(video.duration) ? video.duration : null,
+      );
+
+    video.addEventListener("loadedmetadata", handleMetadata);
+    if (video.readyState >= 1) handleMetadata();
+
+    return () => video.removeEventListener("loadedmetadata", handleMetadata);
+  }, [current, cards]);
 
   useLayoutEffect(() => {
     const progress = progressRef.current;
@@ -197,6 +216,7 @@ export function useMediaCardGallery({ cards, revealCards = true }) {
   return {
     current,
     status,
+    videoDuration,
     isRunning: status === "playing" && isInView,
     scrollerRef,
     dotListRef,
