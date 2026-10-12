@@ -279,6 +279,11 @@ export const projects = [
         caption: "Reservas al día, de un vistazo",
         position: "bottom",
       },
+      {
+        video: "projects/parking/parking-4.mp4",
+        caption: "Reservas al día, de un vistazo",
+        position: "bottom",
+      },
     ],
     alt: "Proyecto parking",
     stack: ["Python", "FastAPI", "Redis", "React", "Tailwind", "Tanstack"],
