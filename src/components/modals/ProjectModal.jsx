@@ -1,16 +1,25 @@
 // Hooks
 import { useState } from "react";
+import { useAllAccessPass } from "@hooks/useAllAccessPass";
+import { useMediaCardGallery } from "@hooks/useMediaCardGallery";
 // Iconos
 import { icons } from "@assets/icons";
 // Componentes
 import Icon from "@components/ui/Icon";
 import Tabs from "@components/ui/Tabs";
 import Accordion from "@components/ui/Accordion";
+import GalleryControls from "@components/ui/GalleryControls";
+import MediaCardGallery from "@components/ui/MediaCardGallery";
 // Modales
 import Modal from "@modals/Modal";
 
 export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
   const [activeModule, setActiveModule] = useState(0);
+  const gallery = useMediaCardGallery({
+    cards: project.images,
+    revealCards: false,
+  });
+  const pass = useAllAccessPass({ triggerRef: gallery.scrollerRef });
 
   return (
     <Modal
@@ -20,31 +29,52 @@ export default function ProjectModal({ isOpen, triggerRef, onClose, project }) {
       isOpen={isOpen}
       onClose={onClose}
       triggerRef={triggerRef}
-      styles="w-screen h-screen flex flex-col p-7 font-sans"
+      styles="w-screen h-screen flex flex-col pt-3 font-sans"
     >
       <div
-        className="w-full justify-self-center flex flex-col items-center justify-center mt-2 gap-12
-        xl:w-300
+        className="w-full flex flex-col items-center justify-center mt-2 gap-5
         dark:text-[#E4E2E5]"
       >
-        <div className="w-full flex flex-wrap items-start gap-3">
-          {project.images.map((image, index) => (
-            <img
-              key={image}
-              {...(index === 0 && { "data-shared-id": "project-main-image" })}
-              src={image}
-              alt={project.alt}
-              width={1919}
-              height={1078}
-              className={`min-w-0 grow basis-80 rounded-2xl object-cover
-              dark:border-[#000000]`}
-            />
-          ))}
+        <div className="w-full">
+          <MediaCardGallery
+            cards={project.media.map((media, index) => ({
+              image: media.image,
+              video: media.video,
+              alt: project.alt,
+              caption: media.caption,
+              imagePosition: media.position,
+              sharedId: index === 0 ? "project-main-image" : null,
+            }))}
+            current={gallery.current}
+            idPrefix="project"
+            imageWidth={1919}
+            imageHeight={1078}
+            onSelect={gallery.goTo}
+            scrollerRef={gallery.scrollerRef}
+            registerCard={gallery.registerCard}
+          />
+
+          <GalleryControls
+            {...pass}
+            cards={project.media.map((_, index) => ({
+              title: `Imagen ${index + 1} de ${project.title}`,
+            }))}
+            current={gallery.current}
+            idPrefix="project"
+            status={gallery.status}
+            isRunning={gallery.isRunning}
+            videoDuration={gallery.videoDuration}
+            dotListRef={gallery.dotListRef}
+            onSelect={gallery.goTo}
+            onToggle={gallery.toggle}
+            onFillEnd={gallery.advance}
+          />
         </div>
 
         <div
           className="w-full flex flex-col gap-8
-          md:px-4"
+          md:px-4
+          xl:w-7xl"
         >
           <div
             className="flex flex-col justify-between gap-3
